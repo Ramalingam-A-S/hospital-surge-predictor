@@ -1,0 +1,255 @@
+{
+  "sample_scenarios": [
+    {
+      "name": "Normal Operations - Low Risk",
+      "description": "Standard hospital operations with adequate capacity",
+      "data": {
+        "hospital_id": "MED-CENTRAL-001",
+        "timestamp": "2024-01-15T08:00:00Z",
+        "beds_total": 200,
+        "beds_free": 80,
+        "expected_free_time": [
+          "2024-01-15T10:00:00Z",
+          "2024-01-15T14:00:00Z"
+        ],
+        "doctors_on_shift": 15,
+        "nurses_on_shift": 35,
+        "oxygen_cylinders": 60,
+        "ventilators": 20,
+        "key_meds": {
+          "Paracetamol": 500,
+          "Antibiotics": 300,
+          "Insulin": 200,
+          "Aspirin": 400,
+          "Morphine": 100
+        },
+        "incoming_emergencies": 5,
+        "incident_description": "Normal operations, no major incidents",
+        "aqi": 85,
+        "festival_name": "",
+        "major_news_summary": ""
+      },
+      "expected_result": {
+        "risk": "Low",
+        "predicted_patients": "7-8"
+      }
+    },
+    {
+      "name": "Moderate Surge - Medium Risk",
+      "description": "Festival period with elevated patient influx expected",
+      "data": {
+        "hospital_id": "MED-CENTRAL-001",
+        "timestamp": "2024-01-15T18:00:00Z",
+        "beds_total": 200,
+        "beds_free": 55,
+        "expected_free_time": [
+          "2024-01-15T20:00:00Z",
+          "2024-01-15T22:00:00Z",
+          "2024-01-16T02:00:00Z"
+        ],
+        "doctors_on_shift": 10,
+        "nurses_on_shift": 22,
+        "oxygen_cylinders": 35,
+        "ventilators": 12,
+        "key_meds": {
+          "Paracetamol": 250,
+          "Antibiotics": 150,
+          "Insulin": 100,
+          "Aspirin": 200,
+          "Morphine": 50
+        },
+        "incoming_emergencies": 15,
+        "incident_description": "Increased emergency calls due to festival celebrations",
+        "aqi": 180,
+        "festival_name": "Diwali",
+        "major_news_summary": "Festival celebrations across the city, moderate air quality concerns"
+      },
+      "expected_result": {
+        "risk": "Medium",
+        "predicted_patients": "30-35"
+      }
+    },
+    {
+      "name": "Critical Surge - High Risk",
+      "description": "Major incident with severe capacity constraints",
+      "data": {
+        "hospital_id": "MED-CENTRAL-001",
+        "timestamp": "2024-01-15T22:30:00Z",
+        "beds_total": 200,
+        "beds_free": 20,
+        "expected_free_time": [
+          "2024-01-16T00:00:00Z"
+        ],
+        "doctors_on_shift": 8,
+        "nurses_on_shift": 18,
+        "oxygen_cylinders": 25,
+        "ventilators": 8,
+        "key_meds": {
+          "Paracetamol": 100,
+          "Antibiotics": 80,
+          "Insulin": 60,
+          "Aspirin": 90,
+          "Morphine": 30
+        },
+        "incoming_emergencies": 28,
+        "incident_description": "Major highway accident with multiple casualties, mass casualty event declared",
+        "aqi": 320,
+        "festival_name": "",
+        "major_news_summary": "Breaking: Major multi-vehicle accident on National Highway 1. Multiple casualties reported. Emergency services deployed."
+      },
+      "expected_result": {
+        "risk": "High",
+        "predicted_patients": "70+"
+      }
+    },
+    {
+      "name": "Air Quality Crisis - High Risk",
+      "description": "Severe air pollution causing respiratory emergencies",
+      "data": {
+        "hospital_id": "MED-CENTRAL-001",
+        "timestamp": "2024-01-16T06:00:00Z",
+        "beds_total": 200,
+        "beds_free": 45,
+        "expected_free_time": [
+          "2024-01-16T08:00:00Z",
+          "2024-01-16T10:00:00Z"
+        ],
+        "doctors_on_shift": 12,
+        "nurses_on_shift": 28,
+        "oxygen_cylinders": 40,
+        "ventilators": 14,
+        "key_meds": {
+          "Paracetamol": 300,
+          "Antibiotics": 200,
+          "Insulin": 150,
+          "Aspirin": 250,
+          "Morphine": 75,
+          "Bronchodilators": 180,
+          "Corticosteroids": 120
+        },
+        "incoming_emergencies": 22,
+        "incident_description": "Increased respiratory distress cases due to severe air pollution",
+        "aqi": 450,
+        "festival_name": "",
+        "major_news_summary": "Air quality reaches hazardous levels. Health advisory issued for vulnerable populations."
+      },
+      "expected_result": {
+        "risk": "High",
+        "predicted_patients": "55-60"
+      }
+    },
+    {
+      "name": "Weekend Festival - Medium Risk",
+      "description": "New Year's Eve with expected celebrations and incidents",
+      "data": {
+        "hospital_id": "MED-CENTRAL-002",
+        "timestamp": "2024-01-01T00:00:00Z",
+        "beds_total": 150,
+        "beds_free": 50,
+        "expected_free_time": [
+          "2024-01-01T02:00:00Z",
+          "2024-01-01T04:00:00Z"
+        ],
+        "doctors_on_shift": 10,
+        "nurses_on_shift": 25,
+        "oxygen_cylinders": 45,
+        "ventilators": 15,
+        "key_meds": {
+          "Paracetamol": 400,
+          "Antibiotics": 250,
+          "Insulin": 180,
+          "Aspirin": 300,
+          "Morphine": 80,
+          "Antiemetics": 150
+        },
+        "incoming_emergencies": 18,
+        "incident_description": "New Year's Eve: Multiple alcohol-related incidents and minor injuries",
+        "aqi": 120,
+        "festival_name": "New Year's Eve",
+        "major_news_summary": "Large gatherings expected for New Year celebrations. Police on high alert."
+      },
+      "expected_result": {
+        "risk": "Medium",
+        "predicted_patients": "35-40"
+      }
+    },
+    {
+      "name": "Supply Shortage Alert",
+      "description": "Normal patient load but critical supply levels low",
+      "data": {
+        "hospital_id": "MED-CENTRAL-003",
+        "timestamp": "2024-01-10T12:00:00Z",
+        "beds_total": 180,
+        "beds_free": 70,
+        "expected_free_time": [
+          "2024-01-10T14:00:00Z",
+          "2024-01-10T16:00:00Z"
+        ],
+        "doctors_on_shift": 14,
+        "nurses_on_shift": 30,
+        "oxygen_cylinders": 18,
+        "ventilators": 6,
+        "key_meds": {
+          "Paracetamol": 80,
+          "Antibiotics": 50,
+          "Insulin": 40,
+          "Aspirin": 60,
+          "Morphine": 20
+        },
+        "incoming_emergencies": 8,
+        "incident_description": "Supply chain delays affecting medication and equipment inventory",
+        "aqi": 95,
+        "festival_name": "",
+        "major_news_summary": ""
+      },
+      "expected_result": {
+        "risk": "Medium",
+        "predicted_patients": "12-15",
+        "note": "Risk elevated due to supply shortages despite low patient load"
+      }
+    }
+  ],
+  "field_descriptions": {
+    "hospital_id": "Unique identifier for the hospital (e.g., MED-CENTRAL-001)",
+    "timestamp": "ISO 8601 timestamp of data submission",
+    "beds_total": "Total number of beds in the hospital",
+    "beds_free": "Number of currently available beds",
+    "expected_free_time": "Array of ISO timestamps when additional beds will become available",
+    "doctors_on_shift": "Number of doctors currently on duty",
+    "nurses_on_shift": "Number of nurses currently on duty",
+    "oxygen_cylinders": "Number of oxygen cylinders available",
+    "ventilators": "Number of ventilators available",
+    "key_meds": "JSON object with medication names and quantities",
+    "incoming_emergencies": "Number of emergency cases expected or en route",
+    "incident_description": "Free text description of current situation",
+    "aqi": "Air Quality Index (0-500 scale)",
+    "festival_name": "Name of ongoing festival or major event",
+    "major_news_summary": "Brief summary of major news affecting the region"
+  },
+  "risk_thresholds": {
+    "occupancy_rate": {
+      "high": ">85%",
+      "medium": "70-85%",
+      "low": "<70%"
+    },
+    "incoming_emergencies": {
+      "high": ">20",
+      "medium": "10-20",
+      "low": "<10"
+    },
+    "aqi": {
+      "hazardous": ">300",
+      "unhealthy": "150-300",
+      "moderate": "50-150",
+      "good": "<50"
+    },
+    "staff_ratio": {
+      "adequate": ">15",
+      "low": "<15"
+    },
+    "critical_supplies": {
+      "oxygen_cylinders_min": 30,
+      "ventilators_min": 10
+    }
+  }
+}
