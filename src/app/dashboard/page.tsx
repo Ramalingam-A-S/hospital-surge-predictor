@@ -4,13 +4,17 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Activity, LogOut } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import HospitalSnapshotForm from "@/components/HospitalSnapshotForm";
 import AnalysisResults from "@/components/AnalysisResults";
+import HistoricalTrendsChart from "@/components/HistoricalTrendsChart";
+import MultiHospitalComparison from "@/components/MultiHospitalComparison";
 
 export default function DashboardPage() {
   const router = useRouter();
   const [analysisResult, setAnalysisResult] = useState<any>(null);
   const [username, setUsername] = useState<string>("");
+  const [hospitalId, setHospitalId] = useState<string>("MED-CENTRAL-001");
 
   useEffect(() => {
     // Check authentication
@@ -33,6 +37,10 @@ export default function DashboardPage() {
 
   const handleAnalysisComplete = (result: any) => {
     setAnalysisResult(result);
+    // Extract hospital_id from the result
+    if (result.hospital_id) {
+      setHospitalId(result.hospital_id);
+    }
   };
 
   return (
@@ -63,44 +71,65 @@ export default function DashboardPage() {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-4 py-8 space-y-8">
-        {/* Form Section */}
-        <HospitalSnapshotForm onAnalysisComplete={handleAnalysisComplete} />
+      <main className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="analysis" className="space-y-6">
+          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto">
+            <TabsTrigger value="analysis">Live Analysis</TabsTrigger>
+            <TabsTrigger value="trends">Historical Trends</TabsTrigger>
+            <TabsTrigger value="comparison">Hospital Network</TabsTrigger>
+          </TabsList>
 
-        {/* Results Section */}
-        {analysisResult && (
-          <div className="animate-in fade-in duration-500">
-            <AnalysisResults result={analysisResult} />
-          </div>
-        )}
+          {/* Live Analysis Tab */}
+          <TabsContent value="analysis" className="space-y-8">
+            {/* Form Section */}
+            <HospitalSnapshotForm onAnalysisComplete={handleAnalysisComplete} />
 
-        {/* Sample Data Info */}
-        {!analysisResult && (
-          <div className="text-center py-12">
-            <div className="inline-block p-4 rounded-full bg-muted mb-4">
-              <Activity className="h-12 w-12 text-muted-foreground" />
-            </div>
-            <h2 className="text-2xl font-bold mb-2">Ready for Analysis</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Submit hospital snapshot data above to receive AI-powered surge predictions and resource recommendations.
-            </p>
-            <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg max-w-2xl mx-auto text-left">
-              <h3 className="font-semibold mb-2">💡 Sample Scenarios to Try:</h3>
-              <ul className="text-sm space-y-1 text-muted-foreground">
-                <li>• <strong>High Risk:</strong> Set beds_free to 15, incoming_emergencies to 25, AQI to 350</li>
-                <li>• <strong>Medium Risk:</strong> Set beds_free to 60, incoming_emergencies to 12, add festival_name</li>
-                <li>• <strong>Low Risk:</strong> Use default values with normal operations</li>
-                <li>• <strong>Major Incident:</strong> Add "major accident" or "disaster" to news summary</li>
-              </ul>
-            </div>
-          </div>
-        )}
+            {/* Results Section */}
+            {analysisResult && (
+              <div className="animate-in fade-in duration-500">
+                <AnalysisResults result={analysisResult} />
+              </div>
+            )}
+
+            {/* Sample Data Info */}
+            {!analysisResult && (
+              <div className="text-center py-12">
+                <div className="inline-block p-4 rounded-full bg-muted mb-4">
+                  <Activity className="h-12 w-12 text-muted-foreground" />
+                </div>
+                <h2 className="text-2xl font-bold mb-2">Ready for Analysis</h2>
+                <p className="text-muted-foreground max-w-md mx-auto">
+                  Submit hospital snapshot data above to receive AI-powered surge predictions and resource recommendations.
+                </p>
+                <div className="mt-6 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg max-w-2xl mx-auto text-left">
+                  <h3 className="font-semibold mb-2">💡 Sample Scenarios to Try:</h3>
+                  <ul className="text-sm space-y-1 text-muted-foreground">
+                    <li>• <strong>High Risk:</strong> Set beds_free to 15, incoming_emergencies to 25, AQI to 350</li>
+                    <li>• <strong>Medium Risk:</strong> Set beds_free to 60, incoming_emergencies to 12, add festival_name</li>
+                    <li>• <strong>Low Risk:</strong> Use default values with normal operations</li>
+                    <li>• <strong>Major Incident:</strong> Add "major accident" or "disaster" to news summary</li>
+                  </ul>
+                </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* Historical Trends Tab */}
+          <TabsContent value="trends">
+            <HistoricalTrendsChart hospitalId={hospitalId} />
+          </TabsContent>
+
+          {/* Multi-Hospital Comparison Tab */}
+          <TabsContent value="comparison">
+            <MultiHospitalComparison />
+          </TabsContent>
+        </Tabs>
       </main>
 
       {/* Footer */}
       <footer className="border-t mt-12 py-6 text-center text-sm text-muted-foreground">
         <p>MedCentric AI © 2024 - Hospital Surge Predictor & Resource Recommender</p>
-        <p className="mt-1">Demo mode with mocked authentication and deterministic predictions</p>
+        <p className="mt-1">Powered by Emergent AI with persistent database storage</p>
       </footer>
     </div>
   );

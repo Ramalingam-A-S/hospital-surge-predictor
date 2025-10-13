@@ -19,8 +19,52 @@ export async function POST(request: NextRequest) {
 
     const emergentData = await emergentResponse.json();
 
+    // Save snapshot and prediction to database
+    const snapshotData = {
+      timestamp: new Date().toISOString(),
+      beds_total: data.beds_total,
+      beds_free: data.beds_free,
+      doctors_on_shift: data.doctors_on_shift,
+      nurses_on_shift: data.nurses_on_shift,
+      oxygen_cylinders: data.oxygen_cylinders,
+      ventilators: data.ventilators,
+      medicines: data.key_meds,
+      incoming_emergencies: data.incoming_emergencies,
+      incident_description: data.incident_description || null,
+      aqi: data.aqi || null,
+      festival: data.festival_name || null,
+      news_summary: data.major_news_summary || null,
+    };
+
+    const predictionData = {
+      risk_level: emergentData.risk || 'Low',
+      predicted_additional_patients_6h: emergentData.predicted_additional_patients_6h || 0,
+      recommended_actions: emergentData.recommended_actions || [],
+      alert_message: emergentData.alert_message || 'Analysis completed',
+      confidence_score: emergentData.confidence || emergentData.confidence_score || null,
+    };
+
+    // Save to database via save-snapshot API
+    try {
+      const saveResponse = await fetch(`${request.nextUrl.origin}/api/save-snapshot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          hospital_id: data.hospital_id,
+          snapshot_data: snapshotData,
+          prediction_data: predictionData,
+        }),
+      });
+
+      if (!saveResponse.ok) {
+        console.error('Failed to save to database:', await saveResponse.text());
+      }
+    } catch (dbError) {
+      console.error('Database save error:', dbError);
+      // Continue even if database save fails
+    }
+
     // Pass through the response from Emergent AI
-    // Expected format: { risk, predicted_additional_patients_6h, recommended_actions, alert_message, confidence }
     const response = {
       success: true,
       hospital_id: data.hospital_id,
