@@ -7,31 +7,38 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Activity } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 export default function LoginPage() {
   const router = useRouter();
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
 
-    // Mocked authentication - accept any non-empty credentials
-    setTimeout(() => {
-      if (username && password) {
-        // Store auth status in sessionStorage
-        sessionStorage.setItem("medcentric_auth", "true");
-        sessionStorage.setItem("medcentric_user", username);
-        router.push("/dashboard");
-      } else {
-        setError("Please enter both username and password");
+    try {
+      const { data, error } = await authClient.signIn.email({
+        email,
+        password,
+        callbackURL: "/dashboard"
+      });
+
+      if (error?.code) {
+        toast.error("Invalid email or password. Please make sure you have already registered an account and try again.");
         setLoading(false);
+        return;
       }
-    }, 500);
+
+      toast.success("Login successful!");
+      router.push("/dashboard");
+    } catch (err) {
+      toast.error("An error occurred during login");
+      setLoading(false);
+    }
   };
 
   return (
@@ -51,13 +58,13 @@ export default function LoginPage() {
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="username">Username</Label>
+              <Label htmlFor="email">Email</Label>
               <Input
-                id="username"
-                type="text"
-                placeholder="admin"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
+                id="email"
+                type="email"
+                placeholder="admin@medcentric.ai"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
                 required
               />
             </div>
@@ -69,18 +76,31 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
+                autoComplete="off"
                 required
               />
             </div>
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
             <Button type="submit" className="w-full" disabled={loading}>
               {loading ? "Signing in..." : "Sign In"}
             </Button>
-            <p className="text-xs text-muted-foreground text-center mt-4">
-              Demo mode: Use any credentials to login
-            </p>
+            <div className="text-center text-sm text-muted-foreground space-y-2">
+              <p>Demo credentials:</p>
+              <p className="font-mono text-xs">
+                Admin: admin@medcentric.ai / admin123
+              </p>
+              <p className="font-mono text-xs">
+                Staff: sarah@medcentric.ai / staff123
+              </p>
+            </div>
+            <div className="text-center">
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => router.push("/register")}
+              >
+                Don't have an account? Register
+              </Button>
+            </div>
           </form>
         </CardContent>
       </Card>

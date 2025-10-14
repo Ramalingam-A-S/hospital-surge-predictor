@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface HospitalSnapshotFormProps {
   onAnalysisComplete: (result: any) => void;
@@ -70,9 +71,13 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
         aqi: formData.aqi ? Number(formData.aqi) : undefined,
       };
 
+      const token = localStorage.getItem("bearer_token");
       const response = await fetch("/api/analyze", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
         body: JSON.stringify(payload),
       });
 
@@ -80,13 +85,14 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
       
       if (result.success) {
         onAnalysisComplete(result);
+        toast.success("Analysis completed successfully!");
       } else {
         console.error("Analysis failed:", result.error);
-        alert("Analysis failed: " + result.error);
+        toast.error("Analysis failed: " + (result.error || "Unknown error"));
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      alert("Failed to submit analysis request");
+      toast.error("Failed to submit analysis request");
     } finally {
       setLoading(false);
     }

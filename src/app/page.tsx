@@ -5,17 +5,27 @@ import { useRouter } from "next/navigation";
 import { Activity, ArrowRight, Shield, TrendingUp, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useSession } from "@/lib/auth-client";
 
 export default function Home() {
   const router = useRouter();
+  const { data: session, isPending } = useSession();
 
   useEffect(() => {
     // Check if user is already authenticated
-    const isAuth = sessionStorage.getItem("medcentric_auth");
-    if (isAuth) {
+    if (!isPending && session?.user) {
       router.push("/dashboard");
     }
-  }, [router]);
+  }, [session, isPending, router]);
+
+  // Show loading while checking auth
+  if (isPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -140,8 +150,8 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-        <p>MedCentric AI © 2024 - Demo Version</p>
-        <p className="mt-1">Mocked authentication • Deterministic predictions • For demonstration purposes</p>
+        <p>MedCentric AI © 2024 - Secure Edition</p>
+        <p className="mt-1">Role-based authentication • AI-powered predictions • Enterprise ready</p>
       </footer>
     </div>
   );

@@ -3,45 +3,67 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Activity, LogOut } from "lucide-react";
+import { Activity, LogOut, Shield, User } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Badge } from "@/components/ui/badge";
 import HospitalSnapshotForm from "@/components/HospitalSnapshotForm";
 import AnalysisResults from "@/components/AnalysisResults";
 import HistoricalTrendsChart from "@/components/HistoricalTrendsChart";
 import MultiHospitalComparison from "@/components/MultiHospitalComparison";
+import { useSession, authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 export default function DashboardPage() {
   const router = useRouter();
+  const { data: session, isPending, refetch } = useSession();
   const [analysisResult, setAnalysisResult] = useState<any>(null);
-  const [username, setUsername] = useState<string>("");
   const [hospitalId, setHospitalId] = useState<string>("MED-CENTRAL-001");
 
   useEffect(() => {
-    // Check authentication
-    const isAuth = sessionStorage.getItem("medcentric_auth");
-    const user = sessionStorage.getItem("medcentric_user");
-    
-    if (!isAuth) {
+    // Redirect if not authenticated
+    if (!isPending && !session?.user) {
       router.push("/login");
-      return;
     }
-    
-    setUsername(user || "Admin");
-  }, [router]);
+  }, [session, isPending, router]);
 
-  const handleLogout = () => {
-    sessionStorage.removeItem("medcentric_auth");
-    sessionStorage.removeItem("medcentric_user");
-    router.push("/login");
+  const handleLogout = async () => {
+    const { error } = await authClient.signOut();
+    if (error?.code) {
+      toast.error("Logout failed");
+    } else {
+      localStorage.removeItem("bearer_token");
+      refetch();
+      toast.success("Logged out successfully");
+      router.push("/");
+    }
   };
 
   const handleAnalysisComplete = (result: any) => {
     setAnalysisResult(result);
-    // Extract hospital_id from the result
     if (result.hospital_id) {
       setHospitalId(result.hospital_id);
     }
   };
+
+  // Show loading while checking auth
+  if (isPending) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Don't render if not authenticated
+  if (!session?.user) {
+    return null;
+  }
+
+  const userRole = (session.user as any).role || "staff";
+  const isAdmin = userRole === "admin";
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -59,8 +81,23 @@ export default function DashboardPage() {
           </div>
           <div className="flex items-center gap-4">
             <div className="text-right hidden sm:block">
-              <p className="text-sm font-medium">{username}</p>
-              <p className="text-xs text-muted-foreground">Admin</p>
+              <div className="flex items-center gap-2 justify-end mb-1">
+                <p className="text-sm font-medium">{session.user.name}</p>
+                <Badge variant={isAdmin ? "default" : "secondary"} className="text-xs">
+                  {isAdmin ? (
+                    <>
+                      <Shield className="h-3 w-3 mr-1" />
+                      Admin
+                    </>
+                  ) : (
+                    <>
+                      <User className="h-3 w-3 mr-1" />
+                      Staff
+                    </>
+                  )}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground">{session.user.email}</p>
             </div>
             <Button variant="outline" onClick={handleLogout}>
               <LogOut className="mr-2 h-4 w-4" />
@@ -76,7 +113,9 @@ export default function DashboardPage() {
           <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto">
             <TabsTrigger value="analysis">Live Analysis</TabsTrigger>
             <TabsTrigger value="trends">Historical Trends</TabsTrigger>
-            <TabsTrigger value="comparison">Hospital Network</TabsTrigger>
+            <TabsTrigger value="comparison">
+              {isAdmin ? "Hospital Network" : "My Hospital"}
+            </TabsTrigger>
           </TabsList>
 
           {/* Live Analysis Tab */}
@@ -129,7 +168,9 @@ export default function DashboardPage() {
       {/* Footer */}
       <footer className="border-t mt-12 py-6 text-center text-sm text-muted-foreground">
         <p>MedCentric AI © 2024 - Hospital Surge Predictor & Resource Recommender</p>
-        <p className="mt-1">Powered by Emergent AI with persistent database storage</p>
+        <p className="mt-1">
+          Powered by Emergent AI • Role-based Access • {isAdmin ? "Admin Dashboard" : "Staff Dashboard"}
+        </p>
       </footer>
     </div>
   );

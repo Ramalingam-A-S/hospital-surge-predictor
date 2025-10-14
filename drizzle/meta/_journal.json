@@ -8,6 +8,20 @@
       "when": 1760373280119,
       "tag": "0000_optimal_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1760416029380,
+      "tag": "0001_tired_big_bertha",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1760416071177,
+      "tag": "0002_conscious_magus",
+      "breakpoints": true
     }
   ]
 }
