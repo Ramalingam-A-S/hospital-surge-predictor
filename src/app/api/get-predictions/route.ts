@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { predictions, snapshots } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Require authentication
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const searchParams = request.nextUrl.searchParams;
     const hospitalId = searchParams.get('hospital_id');
     const limitParam = searchParams.get('limit');

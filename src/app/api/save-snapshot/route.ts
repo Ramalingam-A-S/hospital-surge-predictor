@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
 import { snapshots, predictions, hospitals } from '@/db/schema';
 import { eq } from 'drizzle-orm';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { hospital_id, snapshot_data, prediction_data } = body;
 

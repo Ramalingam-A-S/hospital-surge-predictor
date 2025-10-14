@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Activity, LogOut, Shield, User } from "lucide-react";
+import { Activity, LogOut, Shield, User, Bell } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import HospitalSnapshotForm from "@/components/HospitalSnapshotForm";
 import AnalysisResults from "@/components/AnalysisResults";
 import HistoricalTrendsChart from "@/components/HistoricalTrendsChart";
 import MultiHospitalComparison from "@/components/MultiHospitalComparison";
+import NotificationPanel from "@/components/NotificationPanel";
 import { useSession, authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 
@@ -110,11 +111,15 @@ export default function DashboardPage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="analysis" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 max-w-2xl mx-auto">
+          <TabsList className="grid w-full grid-cols-4 max-w-3xl mx-auto">
             <TabsTrigger value="analysis">Live Analysis</TabsTrigger>
-            <TabsTrigger value="trends">Historical Trends</TabsTrigger>
+            <TabsTrigger value="alerts">
+              <Bell className="h-4 w-4 mr-2" />
+              Alerts
+            </TabsTrigger>
+            <TabsTrigger value="trends">Historical</TabsTrigger>
             <TabsTrigger value="comparison">
-              {isAdmin ? "Hospital Network" : "My Hospital"}
+              {isAdmin ? "Network" : "Hospital"}
             </TabsTrigger>
           </TabsList>
 
@@ -151,6 +156,11 @@ export default function DashboardPage() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          {/* Alerts Tab */}
+          <TabsContent value="alerts">
+            <NotificationPanel hospitalId={hospitalId} />
           </TabsContent>
 
           {/* Historical Trends Tab */}

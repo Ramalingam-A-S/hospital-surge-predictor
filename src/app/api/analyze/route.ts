@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function POST(request: NextRequest) {
   try {
+    // Require authentication
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { success: false, error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const data = await request.json();
 
     // Call Emergent AI API
@@ -69,6 +79,8 @@ export async function POST(request: NextRequest) {
       success: true,
       hospital_id: data.hospital_id,
       timestamp: new Date().toISOString(),
+      user_id: user.id,
+      user_name: user.name,
       analysis: {
         risk: emergentData.risk || 'Low',
         predicted_additional_patients_next_6h: emergentData.predicted_additional_patients_6h || 0,
@@ -86,6 +98,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(response);
   } catch (error) {
     console.error('Analysis error:', error);
+    
+    // Log failed attempt locally
+    const errorLog = {
+      timestamp: new Date().toISOString(),
+      error: error instanceof Error ? error.message : 'Unknown error',
+      stack: error instanceof Error ? error.stack : undefined,
+    };
+    console.error('FAILED_ANALYSIS_ATTEMPT:', JSON.stringify(errorLog));
+    
     return NextResponse.json(
       { 
         success: false, 

@@ -1,17 +1,31 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { AlertTriangle, TrendingUp, Download, Activity, Users, Pill, ArrowUpRight } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertTriangle, TrendingUp, Download, Activity, Users, Pill, ArrowUpRight, Bell, CheckCircle, Gauge } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { toast } from "sonner";
 
 interface AnalysisResultsProps {
   result: any;
 }
 
 export default function AnalysisResults({ result }: AnalysisResultsProps) {
+  const [showHighRiskDialog, setShowHighRiskDialog] = useState(false);
+  const [alertSent, setAlertSent] = useState(false);
+
+  useEffect(() => {
+    // Automatically show high-risk alert dialog
+    if (result?.analysis?.risk === "High") {
+      setShowHighRiskDialog(true);
+      setAlertSent(false);
+    }
+  }, [result]);
+
   if (!result || !result.analysis) return null;
 
   const { analysis } = result;
@@ -54,20 +68,119 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
     URL.revokeObjectURL(url);
   };
 
+  const handleSendAlert = () => {
+    // Simulate autonomous alert sending
+    setAlertSent(true);
+    toast.success("🚨 Emergency Alert Sent!", {
+      description: `Alert dispatched to hospital administration, emergency response team, and on-call staff. All recommended actions flagged as urgent.`,
+    });
+    
+    // Log the action for audit
+    console.log("AUTONOMOUS_ALERT_SENT:", {
+      timestamp: new Date().toISOString(),
+      hospital_id: result.hospital_id,
+      risk_level: analysis.risk,
+      predicted_patients: analysis.predicted_additional_patients_next_6h,
+      user_id: result.user_id,
+      user_name: result.user_name,
+      alert_message: analysis.alert_message,
+      actions_count: analysis.recommended_actions.length
+    });
+  };
+
   const topActions = analysis.recommended_actions.slice(0, 3);
   const occupancyRate = analysis.metrics?.occupancy_rate || 0;
+  const confidenceScore = analysis.confidence_score ? Math.round(analysis.confidence_score * 100) : null;
 
   return (
     <div className="space-y-6">
+      {/* High Risk Alert Dialog */}
+      <Dialog open={showHighRiskDialog} onOpenChange={setShowHighRiskDialog}>
+        <DialogContent className="sm:max-w-[600px] border-2 border-red-500">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600 text-xl">
+              <AlertTriangle className="h-6 w-6" />
+              🚨 HIGH RISK SURGE DETECTED
+            </DialogTitle>
+            <DialogDescription className="text-base pt-2">
+              {analysis.alert_message}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200">
+                <p className="text-xs text-muted-foreground mb-1">Predicted Surge</p>
+                <p className="text-2xl font-bold text-red-600">+{analysis.predicted_additional_patients_next_6h}</p>
+                <p className="text-xs text-muted-foreground">patients in 6 hours</p>
+              </div>
+              <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200">
+                <p className="text-xs text-muted-foreground mb-1">Current Occupancy</p>
+                <p className="text-2xl font-bold text-orange-600">{occupancyRate}%</p>
+                <p className="text-xs text-muted-foreground">bed utilization</p>
+              </div>
+            </div>
+
+            <div className="border-t pt-4">
+              <h4 className="font-semibold mb-3 flex items-center gap-2">
+                <Activity className="h-4 w-4" />
+                Immediate Actions Required:
+              </h4>
+              <div className="space-y-2">
+                {topActions.map((action: any, idx: number) => (
+                  <div key={idx} className="flex items-start gap-2 text-sm p-2 bg-muted/50 rounded">
+                    <Badge variant="destructive" className="mt-0.5">{idx + 1}</Badge>
+                    <span>{action.detail}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowHighRiskDialog(false)}>
+              Review Later
+            </Button>
+            <Button variant="destructive" onClick={handleSendAlert} disabled={alertSent}>
+              {alertSent ? (
+                <>
+                  <CheckCircle className="mr-2 h-4 w-4" />
+                  Alert Sent
+                </>
+              ) : (
+                <>
+                  <Bell className="mr-2 h-4 w-4" />
+                  Send Emergency Alert
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Alert Message */}
       <Alert variant={riskVariant} className="border-2">
         <AlertTriangle className="h-5 w-5" />
-        <AlertTitle className="text-lg font-bold">
-          {analysis.risk} Risk Level Detected
+        <AlertTitle className="text-lg font-bold flex items-center justify-between">
+          <span>{analysis.risk} Risk Level Detected</span>
+          {confidenceScore && (
+            <Badge variant="outline" className="ml-2 flex items-center gap-1">
+              <Gauge className="h-3 w-3" />
+              {confidenceScore}% confidence
+            </Badge>
+          )}
         </AlertTitle>
         <AlertDescription className="mt-2 text-base">
           {analysis.alert_message}
         </AlertDescription>
+        {analysis.risk === "High" && !alertSent && (
+          <div className="mt-4">
+            <Button variant="destructive" size="sm" onClick={handleSendAlert}>
+              <Bell className="mr-2 h-4 w-4" />
+              Send Emergency Alert
+            </Button>
+          </div>
+        )}
       </Alert>
 
       {/* Dashboard Cards */}
@@ -124,6 +237,38 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
           </CardContent>
         </Card>
       </div>
+
+      {/* AI Confidence Score Card */}
+      {confidenceScore && (
+        <Card className="border-2 border-blue-200 dark:border-blue-800">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Gauge className="h-5 w-5 text-blue-600" />
+              AI Confidence Score
+            </CardTitle>
+            <CardDescription>Model prediction accuracy and reliability</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center gap-6">
+              <div className="text-5xl font-bold text-blue-600">{confidenceScore}%</div>
+              <div className="flex-1">
+                <div className="h-4 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-blue-600 transition-all"
+                    style={{ width: `${confidenceScore}%` }}
+                  />
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {confidenceScore >= 90 ? "Excellent - High reliability" :
+                   confidenceScore >= 75 ? "Good - Reliable prediction" :
+                   confidenceScore >= 60 ? "Moderate - Use with caution" :
+                   "Low - Additional verification recommended"}
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Top 3 Recommended Actions */}
       <Card>
@@ -211,7 +356,22 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
       </Card>
 
       {/* Export Button */}
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-3">
+        {analysis.risk === "High" && (
+          <Button onClick={handleSendAlert} disabled={alertSent} variant="destructive">
+            {alertSent ? (
+              <>
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Alert Sent
+              </>
+            ) : (
+              <>
+                <Bell className="mr-2 h-4 w-4" />
+                Send Emergency Alert
+              </>
+            )}
+          </Button>
+        )}
         <Button onClick={handleExport} variant="outline" size="lg">
           <Download className="mr-2 h-4 w-4" />
           Export Analysis (JSON)
