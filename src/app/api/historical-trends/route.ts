@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { snapshots, predictions } from '@/db/schema';
+import { hospitalSnapshots, aiAnalyses } from '@/db/schema';
 import { eq, gte, asc } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -54,28 +54,28 @@ export async function GET(request: NextRequest) {
     // Query snapshots with predictions
     const results = await db
       .select({
-        snapshotId: snapshots.id,
-        timestamp: snapshots.timestamp,
-        bedsTotal: snapshots.bedsTotal,
-        bedsFree: snapshots.bedsFree,
-        doctorsOnShift: snapshots.doctorsOnShift,
-        nursesOnShift: snapshots.nursesOnShift,
-        oxygenCylinders: snapshots.oxygenCylinders,
-        ventilators: snapshots.ventilators,
-        incomingEmergencies: snapshots.incomingEmergencies,
-        aqi: snapshots.aqi,
-        festival: snapshots.festival,
-        predictionId: predictions.id,
-        riskLevel: predictions.riskLevel,
-        predictedAdditionalPatients6h: predictions.predictedAdditionalPatients6h,
-        confidenceScore: predictions.confidenceScore,
+        snapshotId: hospitalSnapshots.id,
+        timestamp: hospitalSnapshots.timestamp,
+        bedsTotal: hospitalSnapshots.bedsTotal,
+        bedsFree: hospitalSnapshots.bedsFree,
+        doctorsOnShift: hospitalSnapshots.doctorsOnShift,
+        nursesOnShift: hospitalSnapshots.nursesOnShift,
+        oxygenCylinders: hospitalSnapshots.oxygenCylinders,
+        ventilators: hospitalSnapshots.ventilators,
+        incomingEmergencies: hospitalSnapshots.incomingEmergencies,
+        aqi: hospitalSnapshots.aqi,
+        festival: hospitalSnapshots.festival,
+        predictionId: aiAnalyses.id,
+        riskLevel: aiAnalyses.risk,
+        predictedAdditionalPatients6h: aiAnalyses.predictedAdditionalPatients6h,
+        confidenceScore: aiAnalyses.confidenceScore,
       })
-      .from(snapshots)
-      .leftJoin(predictions, eq(predictions.snapshotId, snapshots.id))
+      .from(hospitalSnapshots)
+      .leftJoin(aiAnalyses, eq(aiAnalyses.snapshotId, hospitalSnapshots.id))
       .where(
-        eq(snapshots.hospitalId, hospitalId)
+        eq(hospitalSnapshots.hospitalId, hospitalId)
       )
-      .orderBy(asc(snapshots.timestamp));
+      .orderBy(asc(hospitalSnapshots.timestamp));
 
     // Filter by timestamp and format results
     const filteredResults = results.filter(

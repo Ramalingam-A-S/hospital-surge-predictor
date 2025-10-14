@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { snapshots, predictions, hospitals } from '@/db/schema';
+import { hospitalSnapshots, aiAnalyses, hospitals } from '@/db/schema';
 import { eq } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insert snapshot record
-    const newSnapshot = await db.insert(snapshots)
+    const newSnapshot = await db.insert(hospitalSnapshots)
       .values({
         hospitalId: hospital_id,
         timestamp: snapshot_data.timestamp,
@@ -120,11 +120,9 @@ export async function POST(request: NextRequest) {
         ventilators: snapshot_data.ventilators,
         medicines: snapshot_data.medicines,
         incomingEmergencies: snapshot_data.incoming_emergencies,
-        incidentDescription: snapshot_data.incident_description || null,
         aqi: snapshot_data.aqi || null,
         festival: snapshot_data.festival || null,
         newsSummary: snapshot_data.news_summary || null,
-        createdAt: new Date().toISOString()
       })
       .returning();
 
@@ -138,15 +136,14 @@ export async function POST(request: NextRequest) {
     const snapshotId = newSnapshot[0].id;
 
     // Insert prediction record
-    const newPrediction = await db.insert(predictions)
+    const newPrediction = await db.insert(aiAnalyses)
       .values({
         snapshotId: snapshotId,
-        riskLevel: prediction_data.risk_level,
+        risk: prediction_data.risk_level,
         predictedAdditionalPatients6h: prediction_data.predicted_additional_patients_6h,
         recommendedActions: prediction_data.recommended_actions,
         alertMessage: prediction_data.alert_message,
         confidenceScore: prediction_data.confidence_score || null,
-        createdAt: new Date().toISOString()
       })
       .returning();
 

@@ -4,6 +4,7 @@ import { aiAnalyses, hospitalSnapshots } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth';
 
+// API route to fetch AI predictions for a specific hospital
 export async function GET(request: NextRequest) {
   try {
     // Require authentication

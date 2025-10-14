@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { snapshots } from '@/db/schema';
+import { hospitalSnapshots } from '@/db/schema';
 
 async function main() {
     const now = new Date();
@@ -1066,7 +1066,7 @@ async function main() {
         },
     ];
 
-    await db.insert(snapshots).values(sampleSnapshots);
+    await db.insert(hospitalSnapshots).values(sampleSnapshots);
     
     console.log('✅ Snapshots seeder completed successfully');
 }

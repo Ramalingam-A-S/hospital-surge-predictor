@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { hospitals, snapshots, predictions } from '@/db/schema';
+import { hospitals, hospitalSnapshots, aiAnalyses } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 export async function GET(request: NextRequest) {
@@ -16,9 +16,9 @@ export async function GET(request: NextRequest) {
         try {
           // Get the most recent snapshot for this hospital
           const latestSnapshot = await db.select()
-            .from(snapshots)
-            .where(eq(snapshots.hospitalId, hospital.hospitalId))
-            .orderBy(desc(snapshots.createdAt))
+            .from(hospitalSnapshots)
+            .where(eq(hospitalSnapshots.hospitalId, hospital.hospitalId))
+            .orderBy(desc(hospitalSnapshots.timestamp))
             .limit(1);
 
           // If no snapshot exists, return hospital data with null snapshot and prediction
@@ -43,8 +43,8 @@ export async function GET(request: NextRequest) {
 
           // Get prediction for this snapshot
           const snapshotPrediction = await db.select()
-            .from(predictions)
-            .where(eq(predictions.snapshotId, snapshot.id))
+            .from(aiAnalyses)
+            .where(eq(aiAnalyses.snapshotId, snapshot.id))
             .limit(1);
 
           // Build latest_snapshot object
@@ -65,7 +65,7 @@ export async function GET(request: NextRequest) {
           // Build latest_prediction object if prediction exists
           const latestPredictionData = snapshotPrediction.length > 0
             ? {
-                risk_level: snapshotPrediction[0].riskLevel,
+                risk_level: snapshotPrediction[0].risk,
                 predicted_additional_patients_6h: snapshotPrediction[0].predictedAdditionalPatients6h,
                 confidence_score: snapshotPrediction[0].confidenceScore,
                 alert_message: snapshotPrediction[0].alertMessage

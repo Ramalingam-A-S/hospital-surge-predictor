@@ -1,5 +1,5 @@
 import { db } from '@/db';
-import { predictions } from '@/db/schema';
+import { aiAnalyses } from '@/db/schema';
 
 async function main() {
     const samplePredictions = [
