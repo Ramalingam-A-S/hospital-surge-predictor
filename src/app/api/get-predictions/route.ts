@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { predictions, snapshots } from '@/db/schema';
+import { aiAnalyses, hospitalSnapshots } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth';
 
@@ -39,37 +39,37 @@ export async function GET(request: NextRequest) {
     // Query predictions with joined snapshots
     const results = await db
       .select({
-        id: predictions.id,
-        snapshot_id: predictions.snapshotId,
-        risk_level: predictions.riskLevel,
-        predicted_additional_patients_6h: predictions.predictedAdditionalPatients6h,
-        recommended_actions: predictions.recommendedActions,
-        alert_message: predictions.alertMessage,
-        confidence_score: predictions.confidenceScore,
-        created_at: predictions.createdAt,
+        id: aiAnalyses.id,
+        snapshot_id: aiAnalyses.snapshotId,
+        risk_level: aiAnalyses.risk,
+        predicted_additional_patients_6h: aiAnalyses.predictedAdditionalPatients6h,
+        recommended_actions: aiAnalyses.recommendedActions,
+        alert_message: aiAnalyses.alertMessage,
+        confidence_score: aiAnalyses.confidenceScore,
+        created_at: aiAnalyses.snapshotId,
         snapshot: {
-          id: snapshots.id,
-          hospital_id: snapshots.hospitalId,
-          timestamp: snapshots.timestamp,
-          beds_total: snapshots.bedsTotal,
-          beds_free: snapshots.bedsFree,
-          doctors_on_shift: snapshots.doctorsOnShift,
-          nurses_on_shift: snapshots.nursesOnShift,
-          oxygen_cylinders: snapshots.oxygenCylinders,
-          ventilators: snapshots.ventilators,
-          medicines: snapshots.medicines,
-          incoming_emergencies: snapshots.incomingEmergencies,
-          incident_description: snapshots.incidentDescription,
-          aqi: snapshots.aqi,
-          festival: snapshots.festival,
-          news_summary: snapshots.newsSummary,
-          created_at: snapshots.createdAt,
+          id: hospitalSnapshots.id,
+          hospital_id: hospitalSnapshots.hospitalId,
+          timestamp: hospitalSnapshots.timestamp,
+          beds_total: hospitalSnapshots.bedsTotal,
+          beds_free: hospitalSnapshots.bedsFree,
+          doctors_on_shift: hospitalSnapshots.doctorsOnShift,
+          nurses_on_shift: hospitalSnapshots.nursesOnShift,
+          oxygen_cylinders: hospitalSnapshots.oxygenCylinders,
+          ventilators: hospitalSnapshots.ventilators,
+          medicines: hospitalSnapshots.medicines,
+          incoming_emergencies: hospitalSnapshots.incomingEmergencies,
+          incident_description: hospitalSnapshots.newsSummary,
+          aqi: hospitalSnapshots.aqi,
+          festival: hospitalSnapshots.festival,
+          news_summary: hospitalSnapshots.newsSummary,
+          created_at: hospitalSnapshots.timestamp,
         }
       })
-      .from(predictions)
-      .innerJoin(snapshots, eq(predictions.snapshotId, snapshots.id))
-      .where(eq(snapshots.hospitalId, hospitalId))
-      .orderBy(desc(predictions.createdAt))
+      .from(aiAnalyses)
+      .innerJoin(hospitalSnapshots, eq(aiAnalyses.snapshotId, hospitalSnapshots.id))
+      .where(eq(hospitalSnapshots.hospitalId, hospitalId))
+      .orderBy(desc(hospitalSnapshots.timestamp))
       .limit(limit);
 
     return NextResponse.json(results, { status: 200 });
