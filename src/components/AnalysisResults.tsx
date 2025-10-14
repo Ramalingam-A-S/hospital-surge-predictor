@@ -18,38 +18,60 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
   const [showHighRiskDialog, setShowHighRiskDialog] = useState(false);
   const [alertSent, setAlertSent] = useState(false);
 
+  // Handle both old and new API response formats
+  const risk = result?.risk || result?.analysis?.risk;
+  const alertMessage = result?.alert_message || result?.analysis?.alert_message;
+  const predictedPatients = result?.predicted_additional_patients_6h || result?.analysis?.predicted_additional_patients_next_6h || 0;
+  const recommendedActions = result?.recommended_actions || result?.analysis?.recommended_actions || [];
+  const confidenceScore = result?.confidence_score || result?.analysis?.confidence_score;
+  const capacityRatio = result?.capacity_ratio;
+  const reasoningSummary = result?.reasoning_summary;
+  const snapshotData = result?.snapshot_data;
+
   useEffect(() => {
     // Automatically show high-risk alert dialog
-    if (result?.analysis?.risk === "High") {
+    if (risk === "High") {
       setShowHighRiskDialog(true);
       setAlertSent(false);
     }
-  }, [result]);
+  }, [result, risk]);
 
-  if (!result || !result.analysis) return null;
+  if (!result) return null;
 
-  const { analysis } = result;
   const riskColor = {
     Low: "bg-green-500",
     Medium: "bg-yellow-500",
     High: "bg-red-500"
-  }[analysis.risk] || "bg-gray-500";
+  }[risk] || "bg-gray-500";
 
   const riskVariant = {
     Low: "default" as const,
     Medium: "secondary" as const,
     High: "destructive" as const
-  }[analysis.risk] || "default" as const;
+  }[risk] || "default" as const;
+
+  const occupancyRate = capacityRatio ? Math.round(capacityRatio * 100) : 0;
+  const confidencePercent = confidenceScore ? Math.round(confidenceScore * 100) : null;
+
+  // Calculate staff from snapshot data
+  const staffAvailable = snapshotData 
+    ? (snapshotData.doctors_on_shift || 0) + (snapshotData.nurses_on_shift || 0)
+    : 0;
 
   // Generate 6-hour timeline data
+  const currentPatients = snapshotData?.beds_total 
+    ? snapshotData.beds_total - snapshotData.beds_free 
+    : 165;
+  const maxCapacity = snapshotData?.beds_total || 200;
+
   const timelineData = Array.from({ length: 7 }, (_, i) => {
     const hour = new Date();
     hour.setHours(hour.getHours() + i);
     return {
       time: hour.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
-      current: Math.max(0, 165 - i * 5),
-      predicted: 165 + Math.floor((analysis.predicted_additional_patients_next_6h / 6) * i),
-      capacity: 200
+      current: Math.max(0, currentPatients),
+      predicted: currentPatients + Math.floor((predictedPatients / 6) * i),
+      capacity: maxCapacity
     };
   });
 
@@ -68,29 +90,20 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
     URL.revokeObjectURL(url);
   };
 
-  const handleSendAlert = () => {
-    // Simulate autonomous alert sending
-    setAlertSent(true);
-    toast.success("🚨 Emergency Alert Sent!", {
-      description: `Alert dispatched to hospital administration, emergency response team, and on-call staff. All recommended actions flagged as urgent.`,
-    });
-    
-    // Log the action for audit
-    console.log("AUTONOMOUS_ALERT_SENT:", {
+  const handleSendAlert = async () => {
+    // Simulate sending emergency alert
+    console.log("🚨 EMERGENCY ALERT SENT:", {
+      hospital_id: result.hospital_id || result.snapshot_id,
+      risk: risk,
       timestamp: new Date().toISOString(),
-      hospital_id: result.hospital_id,
-      risk_level: analysis.risk,
-      predicted_patients: analysis.predicted_additional_patients_next_6h,
-      user_id: result.user_id,
-      user_name: result.user_name,
-      alert_message: analysis.alert_message,
-      actions_count: analysis.recommended_actions.length
+      alert_message: alertMessage,
+      actions: recommendedActions
     });
+    setAlertSent(true);
+    toast.success("Emergency alert sent to hospital network!");
   };
 
-  const topActions = analysis.recommended_actions.slice(0, 3);
-  const occupancyRate = analysis.metrics?.occupancy_rate || 0;
-  const confidenceScore = analysis.confidence_score ? Math.round(analysis.confidence_score * 100) : null;
+  const topActions = recommendedActions.slice(0, 3);
 
   return (
     <div className="space-y-6">
@@ -103,7 +116,7 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
               🚨 HIGH RISK SURGE DETECTED
             </DialogTitle>
             <DialogDescription className="text-base pt-2">
-              {analysis.alert_message}
+              {alertMessage}
             </DialogDescription>
           </DialogHeader>
           
@@ -111,7 +124,7 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
             <div className="grid grid-cols-2 gap-4">
               <div className="p-3 bg-red-50 dark:bg-red-950/20 rounded-lg border border-red-200">
                 <p className="text-xs text-muted-foreground mb-1">Predicted Surge</p>
-                <p className="text-2xl font-bold text-red-600">+{analysis.predicted_additional_patients_next_6h}</p>
+                <p className="text-2xl font-bold text-red-600">+{predictedPatients}</p>
                 <p className="text-xs text-muted-foreground">patients in 6 hours</p>
               </div>
               <div className="p-3 bg-orange-50 dark:bg-orange-950/20 rounded-lg border border-orange-200">
@@ -130,7 +143,7 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
                 {topActions.map((action: any, idx: number) => (
                   <div key={idx} className="flex items-start gap-2 text-sm p-2 bg-muted/50 rounded">
                     <Badge variant="destructive" className="mt-0.5">{idx + 1}</Badge>
-                    <span>{action.detail}</span>
+                    <span>{action.action || action.detail}</span>
                   </div>
                 ))}
               </div>
@@ -162,18 +175,18 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
       <Alert variant={riskVariant} className="border-2">
         <AlertTriangle className="h-5 w-5" />
         <AlertTitle className="text-lg font-bold flex items-center justify-between">
-          <span>{analysis.risk} Risk Level Detected</span>
-          {confidenceScore && (
+          <span>{risk} Risk Level Detected</span>
+          {confidencePercent && (
             <Badge variant="outline" className="ml-2 flex items-center gap-1">
               <Gauge className="h-3 w-3" />
-              {confidenceScore}% confidence
+              {confidencePercent}% confidence
             </Badge>
           )}
         </AlertTitle>
         <AlertDescription className="mt-2 text-base">
-          {analysis.alert_message}
+          {alertMessage}
         </AlertDescription>
-        {analysis.risk === "High" && !alertSent && (
+        {risk === "High" && !alertSent && (
           <div className="mt-4">
             <Button variant="destructive" size="sm" onClick={handleSendAlert}>
               <Bell className="mr-2 h-4 w-4" />
@@ -193,7 +206,7 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
           <CardContent>
             <div className="text-3xl font-bold">{occupancyRate}%</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {analysis.metrics?.critical_supplies_status === 'adequate' ? 'Within normal range' : 'Supplies running low'}
+              {snapshotData?.beds_free} of {snapshotData?.beds_total} beds available
             </p>
             <div className="mt-3 h-2 bg-muted rounded-full overflow-hidden">
               <div 
@@ -210,13 +223,15 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">+{analysis.predicted_additional_patients_next_6h}</div>
+            <div className="text-3xl font-bold">+{predictedPatients}</div>
             <p className="text-xs text-muted-foreground mt-1">
               Next 6 hours
             </p>
             <div className="flex items-center mt-3 text-sm">
               <ArrowUpRight className="h-4 w-4 text-red-500 mr-1" />
-              <span className="text-muted-foreground">Incoming patients</span>
+              <span className="text-muted-foreground">
+                {snapshotData?.incoming_emergencies || 0} incoming emergencies
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -227,9 +242,9 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
             <Users className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{analysis.metrics?.staff_available || 0}</div>
+            <div className="text-3xl font-bold">{staffAvailable}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              Doctors & Nurses on duty
+              {snapshotData?.doctors_on_shift || 0} doctors, {snapshotData?.nurses_on_shift || 0} nurses
             </p>
             <Badge variant="outline" className="mt-3">
               Active shift
@@ -239,7 +254,7 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
       </div>
 
       {/* AI Confidence Score Card */}
-      {confidenceScore && (
+      {confidencePercent && (
         <Card className="border-2 border-blue-200 dark:border-blue-800">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -250,22 +265,35 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-6">
-              <div className="text-5xl font-bold text-blue-600">{confidenceScore}%</div>
+              <div className="text-5xl font-bold text-blue-600">{confidencePercent}%</div>
               <div className="flex-1">
                 <div className="h-4 bg-muted rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-blue-600 transition-all"
-                    style={{ width: `${confidenceScore}%` }}
+                    style={{ width: `${confidencePercent}%` }}
                   />
                 </div>
                 <p className="text-sm text-muted-foreground mt-2">
-                  {confidenceScore >= 90 ? "Excellent - High reliability" :
-                   confidenceScore >= 75 ? "Good - Reliable prediction" :
-                   confidenceScore >= 60 ? "Moderate - Use with caution" :
+                  {confidencePercent >= 90 ? "Excellent - High reliability" :
+                   confidencePercent >= 75 ? "Good - Reliable prediction" :
+                   confidencePercent >= 60 ? "Moderate - Use with caution" :
                    "Low - Additional verification recommended"}
                 </p>
               </div>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Reasoning Summary */}
+      {reasoningSummary && (
+        <Card>
+          <CardHeader>
+            <CardTitle>AI Analysis Reasoning</CardTitle>
+            <CardDescription>Detailed explanation of the risk assessment</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm leading-relaxed">{reasoningSummary}</p>
           </CardContent>
         </Card>
       )}
@@ -275,7 +303,7 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
         <CardHeader>
           <CardTitle className="flex items-center justify-between">
             <span>Top 3 Recommended Actions</span>
-            <Badge variant={riskVariant}>{analysis.risk} Priority</Badge>
+            <Badge variant={riskVariant}>{risk} Priority</Badge>
           </CardTitle>
           <CardDescription>Immediate actions to manage the predicted surge</CardDescription>
         </CardHeader>
@@ -284,21 +312,21 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
             {topActions.map((action: any, idx: number) => (
               <div key={idx} className="flex items-start gap-3 p-3 border rounded-lg">
                 <div className="flex-shrink-0 mt-0.5">
-                  {action.type === 'staff' && <Users className="h-5 w-5 text-blue-500" />}
-                  {action.type === 'supply' && <Pill className="h-5 w-5 text-green-500" />}
-                  {action.type === 'transfer' && <ArrowUpRight className="h-5 w-5 text-orange-500" />}
-                  {action.type === 'advisory' && <AlertTriangle className="h-5 w-5 text-yellow-500" />}
+                  <Badge variant="outline" className="rounded-full w-6 h-6 flex items-center justify-center p-0">
+                    {idx + 1}
+                  </Badge>
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="capitalize">{action.type}</Badge>
-                    <Badge variant={action.urgency === 'High' ? 'destructive' : 'secondary'} className="text-xs">
-                      {action.urgency} Urgency
-                    </Badge>
+                    {action.priority && (
+                      <Badge variant={action.priority === 'Critical' || action.priority === 'High' ? 'destructive' : 'secondary'} className="text-xs">
+                        {action.priority} Priority
+                      </Badge>
+                    )}
                   </div>
-                  <p className="text-sm font-medium">{action.detail}</p>
-                  {action.qty && (
-                    <p className="text-xs text-muted-foreground mt-1">Quantity: {action.qty}</p>
+                  <p className="text-sm font-medium">{action.action || action.detail}</p>
+                  {action.reason && (
+                    <p className="text-xs text-muted-foreground mt-1">{action.reason}</p>
                   )}
                 </div>
               </div>
@@ -330,34 +358,37 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
       </Card>
 
       {/* All Recommended Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>All Recommended Actions</CardTitle>
-          <CardDescription>Complete list of suggested interventions</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {analysis.recommended_actions.map((action: any, idx: number) => (
-              <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Badge variant="outline" className="capitalize">{action.type}</Badge>
-                    {action.qty && <span className="text-xs text-muted-foreground">Qty: {action.qty}</span>}
+      {recommendedActions.length > 3 && (
+        <Card>
+          <CardHeader>
+            <CardTitle>All Recommended Actions</CardTitle>
+            <CardDescription>Complete list of suggested interventions</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {recommendedActions.map((action: any, idx: number) => (
+                <div key={idx} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">{action.action || action.detail}</p>
+                    {action.reason && (
+                      <p className="text-xs text-muted-foreground mt-1">{action.reason}</p>
+                    )}
                   </div>
-                  <p className="text-sm">{action.detail}</p>
+                  {action.priority && (
+                    <Badge variant={action.priority === 'Critical' || action.priority === 'High' ? 'destructive' : action.priority === 'Medium' ? 'secondary' : 'default'}>
+                      {action.priority}
+                    </Badge>
+                  )}
                 </div>
-                <Badge variant={action.urgency === 'High' ? 'destructive' : action.urgency === 'Medium' ? 'secondary' : 'default'}>
-                  {action.urgency}
-                </Badge>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Export Button */}
       <div className="flex justify-end gap-3">
-        {analysis.risk === "High" && (
+        {risk === "High" && (
           <Button onClick={handleSendAlert} disabled={alertSent} variant="destructive">
             {alertSent ? (
               <>

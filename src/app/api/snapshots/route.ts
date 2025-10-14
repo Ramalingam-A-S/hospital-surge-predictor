@@ -1,100 +1,141 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { snapshots, predictions } from '@/db/schema';
-import { eq, desc } from 'drizzle-orm';
+import { hospitalSnapshots, aiAnalyses } from '@/db/schema';
+import { eq, desc, gte, lte, and } from 'drizzle-orm';
+import { getCurrentUser } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
+    // Authentication check
+    const user = await getCurrentUser(request);
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Authentication required', code: 'UNAUTHORIZED' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const hospitalId = searchParams.get('hospital_id');
+    const startDate = searchParams.get('start_date');
+    const endDate = searchParams.get('end_date');
     const limitParam = searchParams.get('limit');
+    const offsetParam = searchParams.get('offset');
 
-    // Validate required hospital_id parameter
-    if (!hospitalId) {
+    // Parse and validate limit (default 50, max 200)
+    const limit = Math.min(
+      parseInt(limitParam || '50'),
+      200
+    );
+
+    // Parse offset (default 0)
+    const offset = parseInt(offsetParam || '0');
+
+    // Validate date formats if provided
+    if (startDate && isNaN(Date.parse(startDate))) {
       return NextResponse.json(
-        { 
-          error: 'hospital_id parameter is required',
-          code: 'MISSING_HOSPITAL_ID'
-        },
+        { error: 'Invalid start_date format. Use ISO 8601 format.', code: 'INVALID_START_DATE' },
         { status: 400 }
       );
     }
 
-    // Parse and validate limit parameter
-    const limit = Math.min(
-      parseInt(limitParam || '20'),
-      100
-    );
+    if (endDate && isNaN(Date.parse(endDate))) {
+      return NextResponse.json(
+        { error: 'Invalid end_date format. Use ISO 8601 format.', code: 'INVALID_END_DATE' },
+        { status: 400 }
+      );
+    }
 
-    // Query snapshots with left join to predictions
-    const results = await db
+    // Build WHERE conditions
+    const conditions = [];
+    
+    if (hospitalId) {
+      conditions.push(eq(hospitalSnapshots.hospitalId, hospitalId));
+    }
+    
+    if (startDate) {
+      conditions.push(gte(hospitalSnapshots.timestamp, startDate));
+    }
+    
+    if (endDate) {
+      conditions.push(lte(hospitalSnapshots.timestamp, endDate));
+    }
+
+    // Build and execute query
+    let query = db
       .select({
-        id: snapshots.id,
-        hospital_id: snapshots.hospitalId,
-        timestamp: snapshots.timestamp,
-        beds_total: snapshots.bedsTotal,
-        beds_free: snapshots.bedsFree,
-        doctors_on_shift: snapshots.doctorsOnShift,
-        nurses_on_shift: snapshots.nursesOnShift,
-        oxygen_cylinders: snapshots.oxygenCylinders,
-        ventilators: snapshots.ventilators,
-        medicines: snapshots.medicines,
-        incoming_emergencies: snapshots.incomingEmergencies,
-        incident_description: snapshots.incidentDescription,
-        aqi: snapshots.aqi,
-        festival: snapshots.festival,
-        news_summary: snapshots.newsSummary,
-        created_at: snapshots.createdAt,
-        prediction_id: predictions.id,
-        prediction_risk_level: predictions.riskLevel,
-        prediction_patients_6h: predictions.predictedAdditionalPatients6h,
-        prediction_actions: predictions.recommendedActions,
-        prediction_alert: predictions.alertMessage,
-        prediction_confidence: predictions.confidenceScore,
-        prediction_created_at: predictions.createdAt,
+        snapshotId: hospitalSnapshots.id,
+        hospitalId: hospitalSnapshots.hospitalId,
+        timestamp: hospitalSnapshots.timestamp,
+        bedsTotal: hospitalSnapshots.bedsTotal,
+        bedsFree: hospitalSnapshots.bedsFree,
+        doctorsOnShift: hospitalSnapshots.doctorsOnShift,
+        nursesOnShift: hospitalSnapshots.nursesOnShift,
+        oxygenCylinders: hospitalSnapshots.oxygenCylinders,
+        ventilators: hospitalSnapshots.ventilators,
+        medicines: hospitalSnapshots.medicines,
+        incomingEmergencies: hospitalSnapshots.incomingEmergencies,
+        aqi: hospitalSnapshots.aqi,
+        festival: hospitalSnapshots.festival,
+        newsSummary: hospitalSnapshots.newsSummary,
+        analysisId: aiAnalyses.id,
+        risk: aiAnalyses.risk,
+        predictedAdditionalPatients6h: aiAnalyses.predictedAdditionalPatients6h,
+        recommendedActions: aiAnalyses.recommendedActions,
+        alertMessage: aiAnalyses.alertMessage,
+        confidenceScore: aiAnalyses.confidenceScore,
+        capacityRatio: aiAnalyses.capacityRatio,
+        reasoningSummary: aiAnalyses.reasoningSummary,
       })
-      .from(snapshots)
-      .leftJoin(predictions, eq(snapshots.id, predictions.snapshotId))
-      .where(eq(snapshots.hospitalId, hospitalId))
-      .orderBy(desc(snapshots.createdAt))
-      .limit(limit);
+      .from(hospitalSnapshots)
+      .leftJoin(aiAnalyses, eq(hospitalSnapshots.id, aiAnalyses.snapshotId));
 
-    // Transform results to handle null predictions
+    // Apply WHERE conditions if any
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions));
+    }
+
+    // Apply ordering, limit, and offset
+    const results = await query
+      .orderBy(desc(hospitalSnapshots.timestamp))
+      .limit(limit)
+      .offset(offset);
+
+    // Format response
     const formattedResults = results.map(row => ({
-      id: row.id,
-      hospital_id: row.hospital_id,
+      snapshot_id: row.snapshotId,
+      hospital_id: row.hospitalId,
       timestamp: row.timestamp,
-      beds_total: row.beds_total,
-      beds_free: row.beds_free,
-      doctors_on_shift: row.doctors_on_shift,
-      nurses_on_shift: row.nurses_on_shift,
-      oxygen_cylinders: row.oxygen_cylinders,
+      beds_total: row.bedsTotal,
+      beds_free: row.bedsFree,
+      capacity_ratio: row.capacityRatio,
+      doctors_on_shift: row.doctorsOnShift,
+      nurses_on_shift: row.nursesOnShift,
+      oxygen_cylinders: row.oxygenCylinders,
       ventilators: row.ventilators,
       medicines: row.medicines,
-      incoming_emergencies: row.incoming_emergencies,
-      incident_description: row.incident_description,
+      incoming_emergencies: row.incomingEmergencies,
       aqi: row.aqi,
       festival: row.festival,
-      news_summary: row.news_summary,
-      created_at: row.created_at,
-      prediction: row.prediction_id !== null ? {
-        id: row.prediction_id,
-        risk_level: row.prediction_risk_level,
-        predicted_additional_patients_6h: row.prediction_patients_6h,
-        recommended_actions: row.prediction_actions,
-        alert_message: row.prediction_alert,
-        confidence_score: row.prediction_confidence,
-        created_at: row.prediction_created_at,
+      news_summary: row.newsSummary,
+      analysis: row.analysisId !== null ? {
+        id: row.analysisId,
+        risk: row.risk,
+        predicted_additional_patients_6h: row.predictedAdditionalPatients6h,
+        recommended_actions: row.recommendedActions,
+        alert_message: row.alertMessage,
+        confidence_score: row.confidenceScore,
+        reasoning_summary: row.reasoningSummary,
       } : null
     }));
 
     return NextResponse.json(formattedResults, { status: 200 });
 
   } catch (error) {
-    console.error('GET error:', error);
+    console.error('GET /api/snapshots error:', error);
     return NextResponse.json(
       { 
-        error: 'Internal server error: ' + error,
+        error: 'Internal server error: ' + (error instanceof Error ? error.message : 'Unknown error'),
         code: 'INTERNAL_ERROR'
       },
       { status: 500 }

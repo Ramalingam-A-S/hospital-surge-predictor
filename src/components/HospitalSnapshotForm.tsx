@@ -18,20 +18,17 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     hospital_id: "MED-CENTRAL-001",
-    timestamp: new Date().toISOString(),
     beds_total: 200,
     beds_free: 35,
-    expected_free_time: "",
     doctors_on_shift: 12,
     nurses_on_shift: 28,
     oxygen_cylinders: 45,
     ventilators: 15,
-    key_meds: JSON.stringify({ "Paracetamol": 500, "Antibiotics": 200, "Insulin": 150 }, null, 2),
+    medicines: JSON.stringify({ "Paracetamol": 500, "Antibiotics": 200, "Insulin": 150 }, null, 2),
     incoming_emergencies: 8,
-    incident_description: "",
     aqi: "",
-    festival_name: "",
-    major_news_summary: ""
+    festival: "",
+    news_summary: ""
   });
 
   const handleInputChange = (field: string, value: string | number) => {
@@ -43,36 +40,33 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
     setLoading(true);
 
     try {
-      // Parse expected_free_time as array of ISO timestamps
-      const expectedFreeTimeArray = formData.expected_free_time
-        ? formData.expected_free_time.split(",").map(t => t.trim())
-        : [];
-
-      // Parse key_meds JSON
-      let keyMeds = {};
+      // Parse medicines JSON
+      let medicinesObj = {};
       try {
-        keyMeds = JSON.parse(formData.key_meds);
+        medicinesObj = JSON.parse(formData.medicines);
       } catch {
-        keyMeds = {};
+        toast.error("Invalid medicines JSON format");
+        setLoading(false);
+        return;
       }
 
       const payload = {
-        ...formData,
-        timestamp: new Date().toISOString(),
+        hospital_id: formData.hospital_id,
         beds_total: Number(formData.beds_total),
         beds_free: Number(formData.beds_free),
-        expected_free_time: expectedFreeTimeArray,
         doctors_on_shift: Number(formData.doctors_on_shift),
         nurses_on_shift: Number(formData.nurses_on_shift),
         oxygen_cylinders: Number(formData.oxygen_cylinders),
         ventilators: Number(formData.ventilators),
-        key_meds: keyMeds,
+        medicines: medicinesObj,
         incoming_emergencies: Number(formData.incoming_emergencies),
-        aqi: formData.aqi ? Number(formData.aqi) : undefined,
+        aqi: formData.aqi ? Number(formData.aqi) : null,
+        festival: formData.festival || null,
+        news_summary: formData.news_summary || null
       };
 
       const token = localStorage.getItem("bearer_token");
-      const response = await fetch("/api/analyze", {
+      const response = await fetch("/api/snapshot", {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",
@@ -83,16 +77,16 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
 
       const result = await response.json();
       
-      if (result.success) {
+      if (response.ok) {
         onAnalysisComplete(result);
-        toast.success("Analysis completed successfully!");
+        toast.success("Snapshot saved and analysis completed!");
       } else {
-        console.error("Analysis failed:", result.error);
-        toast.error("Analysis failed: " + (result.error || "Unknown error"));
+        console.error("Snapshot creation failed:", result.error);
+        toast.error(result.error || "Failed to create snapshot");
       }
     } catch (error) {
       console.error("Error submitting form:", error);
-      toast.error("Failed to submit analysis request");
+      toast.error("Failed to submit snapshot request");
     } finally {
       setLoading(false);
     }
@@ -155,27 +149,6 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   />
                 </div>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="expected_free_time">Expected Free Times (comma-separated ISO timestamps)</Label>
-                <Input
-                  id="expected_free_time"
-                  placeholder="2024-01-15T10:00:00Z, 2024-01-15T14:00:00Z"
-                  value={formData.expected_free_time}
-                  onChange={(e) => handleInputChange("expected_free_time", e.target.value)}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="incident_description">Incident Description</Label>
-                <Textarea
-                  id="incident_description"
-                  placeholder="Describe any ongoing incidents or emergencies..."
-                  value={formData.incident_description}
-                  onChange={(e) => handleInputChange("incident_description", e.target.value)}
-                  rows={3}
-                />
-              </div>
             </TabsContent>
 
             <TabsContent value="resources" className="space-y-4 mt-4">
@@ -223,11 +196,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="key_meds">Key Medications (JSON format)</Label>
+                <Label htmlFor="medicines">Medicines (JSON format)</Label>
                 <Textarea
-                  id="key_meds"
-                  value={formData.key_meds}
-                  onChange={(e) => handleInputChange("key_meds", e.target.value)}
+                  id="medicines"
+                  value={formData.medicines}
+                  onChange={(e) => handleInputChange("medicines", e.target.value)}
                   rows={6}
                   className="font-mono text-sm"
                 />
@@ -246,21 +219,21 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="festival_name">Festival/Event Name</Label>
+                <Label htmlFor="festival">Festival/Event Name</Label>
                 <Input
-                  id="festival_name"
+                  id="festival"
                   placeholder="e.g., Diwali, New Year"
-                  value={formData.festival_name}
-                  onChange={(e) => handleInputChange("festival_name", e.target.value)}
+                  value={formData.festival}
+                  onChange={(e) => handleInputChange("festival", e.target.value)}
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="major_news_summary">Major News Summary</Label>
+                <Label htmlFor="news_summary">Major News Summary</Label>
                 <Textarea
-                  id="major_news_summary"
+                  id="news_summary"
                   placeholder="Describe any major events or news affecting the region..."
-                  value={formData.major_news_summary}
-                  onChange={(e) => handleInputChange("major_news_summary", e.target.value)}
+                  value={formData.news_summary}
+                  onChange={(e) => handleInputChange("news_summary", e.target.value)}
                   rows={4}
                 />
               </div>
