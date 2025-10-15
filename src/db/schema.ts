@@ -40,7 +40,7 @@ export const aiAnalyses = sqliteTable('ai_analyses', {
   reasoningSummary: text('reasoning_summary'),
   reasoning: text('reasoning'),
   simulatedOutcomes: text('simulated_outcomes', { mode: 'json' }),
-  createdAt: text('created_at').notNull(),
+  createdAt: text('created_at').notNull().$defaultFn(() => new Date().toISOString()),
 });
 
 export const users = sqliteTable('users', {
