@@ -38,6 +38,9 @@ export const aiAnalyses = sqliteTable('ai_analyses', {
   confidenceScore: real('confidence_score'),
   capacityRatio: real('capacity_ratio'),
   reasoningSummary: text('reasoning_summary'),
+  reasoning: text('reasoning'),
+  simulatedOutcomes: text('simulated_outcomes', { mode: 'json' }),
+  createdAt: text('created_at').notNull(),
 });
 
 export const users = sqliteTable('users', {
@@ -114,4 +117,32 @@ export const verification = sqliteTable("verification", {
   updatedAt: integer("updated_at", { mode: "timestamp" }).$defaultFn(
     () => new Date(),
   ),
+});
+
+export const liveResources = sqliteTable('live_resources', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  hospitalId: text('hospital_id').notNull(),
+  bedsTotal: integer('beds_total').notNull(),
+  bedsFree: integer('beds_free').notNull(),
+  oxygenCylinders: integer('oxygen_cylinders').notNull(),
+  ventilators: integer('ventilators').notNull(),
+  lastUpdated: text('last_updated').notNull(),
+});
+
+export const staffRoster = sqliteTable('staff_roster', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  staffId: text('staff_id').notNull().unique(),
+  name: text('name').notNull(),
+  role: text('role').notNull(),
+  hospitalId: text('hospital_id').notNull(),
+  onShift: integer('on_shift', { mode: 'boolean' }).notNull(),
+  phone: text('phone').notNull(),
+});
+
+export const wellnessMetrics = sqliteTable('wellness_metrics', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  userId: text('user_id').notNull(),
+  timestamp: text('timestamp').notNull(),
+  moodScore: integer('mood_score').notNull(),
+  note: text('note'),
 });
