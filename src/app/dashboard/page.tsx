@@ -133,7 +133,12 @@ export default function DashboardPage() {
 
             {/* Risk Banner (when analysis available) */}
             {analysisResult && (
-              <RiskBanner analysis={analysisResult} />
+              <RiskBanner 
+                risk={analysisResult.risk}
+                alertMessage={analysisResult.alert_message}
+                confidence={analysisResult.confidence_score}
+                predictedPatients={analysisResult.predicted_additional_patients_6h}
+              />
             )}
 
             {/* Form Section */}

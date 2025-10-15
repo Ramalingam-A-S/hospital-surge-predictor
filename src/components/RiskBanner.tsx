@@ -40,6 +40,14 @@ export default function RiskBanner({
           bgColor: "bg-green-50 dark:bg-green-950/30 border-green-200 dark:border-green-900",
           badgeVariant: "secondary" as const,
         };
+      default:
+        // Fallback for any unexpected risk values
+        return {
+          icon: AlertCircle,
+          variant: "default" as const,
+          bgColor: "bg-gray-50 dark:bg-gray-950/30 border-gray-200 dark:border-gray-900",
+          badgeVariant: "secondary" as const,
+        };
     }
   };
 
@@ -52,7 +60,7 @@ export default function RiskBanner({
       <AlertTitle className="flex items-center gap-3 mb-2">
         <span className="text-lg font-bold">Risk Assessment</span>
         <Badge variant={config.badgeVariant} className="text-sm px-3 py-1">
-          {risk} Risk
+          {risk || "Unknown"} Risk
         </Badge>
         {confidence !== undefined && (
           <span className="text-sm text-muted-foreground ml-auto">
