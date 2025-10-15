@@ -11,6 +11,9 @@ import AnalysisResults from "@/components/AnalysisResults";
 import HistoricalTrendsChart from "@/components/HistoricalTrendsChart";
 import MultiHospitalComparison from "@/components/MultiHospitalComparison";
 import NotificationPanel from "@/components/NotificationPanel";
+import LiveResourceCards from "@/components/LiveResourceCards";
+import RiskBanner from "@/components/RiskBanner";
+import ActionCards from "@/components/ActionCards";
 import { useSession, authClient } from "@/lib/auth-client";
 import { toast } from "sonner";
 
@@ -125,8 +128,24 @@ export default function DashboardPage() {
 
           {/* Live Analysis Tab */}
           <TabsContent value="analysis" className="space-y-8">
+            {/* Live Resource Cards */}
+            <LiveResourceCards hospitalId={hospitalId} />
+
+            {/* Risk Banner (when analysis available) */}
+            {analysisResult && (
+              <RiskBanner analysis={analysisResult} />
+            )}
+
             {/* Form Section */}
             <HospitalSnapshotForm onAnalysisComplete={handleAnalysisComplete} />
+
+            {/* Action Cards (when analysis available) */}
+            {analysisResult && analysisResult.recommended_actions && (
+              <ActionCards 
+                actions={analysisResult.recommended_actions} 
+                hospitalId={hospitalId}
+              />
+            )}
 
             {/* Results Section */}
             {analysisResult && (

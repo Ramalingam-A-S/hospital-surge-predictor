@@ -1,0 +1,235 @@
+{
+  "low_risk_scenario": {
+    "description": "Normal hospital operations with adequate resources",
+    "payload": {
+      "hospital_id": "MED-CENTRAL-001",
+      "timestamp": "2025-10-15T10:00:00Z",
+      "beds_total": 100,
+      "beds_free": 60,
+      "doctors_on_shift": 8,
+      "nurses_on_shift": 15,
+      "oxygen_cylinders": 40,
+      "ventilators": 8,
+      "medicines": {
+        "oxygen": 40,
+        "epinephrine": 25,
+        "morphine": 18
+      },
+      "incoming_emergencies": 1,
+      "aqi": 80,
+      "festival": "",
+      "news_summary": ""
+    },
+    "expected_result": {
+      "risk": "Low",
+      "predicted_additional_patients_6h": "~10",
+      "escalation": false
+    }
+  },
+  "medium_risk_scenario": {
+    "description": "Moderate capacity pressure with festival event",
+    "payload": {
+      "hospital_id": "MED-CENTRAL-001",
+      "timestamp": "2025-10-15T14:00:00Z",
+      "beds_total": 120,
+      "beds_free": 25,
+      "doctors_on_shift": 6,
+      "nurses_on_shift": 12,
+      "oxygen_cylinders": 15,
+      "ventilators": 5,
+      "medicines": {
+        "oxygen": 15,
+        "epinephrine": 10,
+        "morphine": 8
+      },
+      "incoming_emergencies": 3,
+      "aqi": 150,
+      "festival": "Regional fair",
+      "news_summary": "Large festival attendance expected, minor incidents reported"
+    },
+    "expected_result": {
+      "risk": "Medium",
+      "predicted_additional_patients_6h": "~15-20",
+      "escalation": true,
+      "agentic_analysis": true
+    }
+  },
+  "high_risk_scenario": {
+    "description": "Critical surge prediction - mass casualty incident",
+    "payload": {
+      "hospital_id": "MED-CENTRAL-001",
+      "timestamp": "2025-10-15T18:30:00Z",
+      "beds_total": 100,
+      "beds_free": 5,
+      "doctors_on_shift": 6,
+      "nurses_on_shift": 10,
+      "oxygen_cylinders": 3,
+      "ventilators": 2,
+      "medicines": {
+        "oxygen": 3,
+        "epinephrine": 5,
+        "morphine": 4
+      },
+      "incoming_emergencies": 9,
+      "aqi": 250,
+      "festival": "Diwali",
+      "news_summary": "Multiple fatalities and injured in highway pileup. Mass casualty incident declared."
+    },
+    "expected_result": {
+      "risk": "High",
+      "predicted_additional_patients_6h": "~25-30",
+      "escalation": true,
+      "agentic_analysis": true,
+      "webhook_notifications": ["slack", "twilio", "email"],
+      "recommended_actions": [
+        "Activate Mass Casualty Incident (MCI) protocol",
+        "Request immediate staff callback",
+        "Coordinate with regional trauma centers for transfers"
+      ]
+    }
+  },
+  "high_aqi_scenario": {
+    "description": "Air quality emergency triggering respiratory cases",
+    "payload": {
+      "hospital_id": "HOSP-B",
+      "timestamp": "2025-10-15T20:00:00Z",
+      "beds_total": 80,
+      "beds_free": 12,
+      "doctors_on_shift": 5,
+      "nurses_on_shift": 8,
+      "oxygen_cylinders": 8,
+      "ventilators": 3,
+      "medicines": {
+        "oxygen": 8,
+        "albuterol": 12,
+        "prednisone": 15
+      },
+      "incoming_emergencies": 6,
+      "aqi": 350,
+      "festival": "",
+      "news_summary": "Severe air pollution levels. Health advisory issued. Increased respiratory cases reported."
+    },
+    "expected_result": {
+      "risk": "High",
+      "predicted_additional_patients_6h": "~20",
+      "escalation": true,
+      "focus": "Respiratory support resources"
+    }
+  },
+  "staffing_critical_scenario": {
+    "description": "Adequate beds but critical staff shortage",
+    "payload": {
+      "hospital_id": "HOSP-C",
+      "timestamp": "2025-10-15T22:00:00Z",
+      "beds_total": 150,
+      "beds_free": 45,
+      "doctors_on_shift": 3,
+      "nurses_on_shift": 5,
+      "oxygen_cylinders": 25,
+      "ventilators": 6,
+      "medicines": {
+        "oxygen": 25,
+        "epinephrine": 15,
+        "morphine": 10
+      },
+      "incoming_emergencies": 7,
+      "aqi": 120,
+      "festival": "",
+      "news_summary": "Night shift staffing shortage due to flu outbreak among staff"
+    },
+    "expected_result": {
+      "risk": "Medium-High",
+      "escalation": true,
+      "recommended_actions": [
+        "Emergency staff callback",
+        "Activate ShiftOptimizer for redeployment",
+        "Consider transfer agreements with neighboring facilities"
+      ]
+    }
+  },
+  "usage_examples": {
+    "test_quick_check": {
+      "method": "POST",
+      "endpoint": "/api/quick_check",
+      "description": "Fast rule-based risk assessment",
+      "body": "Use any payload from scenarios above"
+    },
+    "test_agentic_analysis": {
+      "method": "POST",
+      "endpoint": "/api/agentic_analysis",
+      "description": "Full AI-powered analysis with reasoning",
+      "body": {
+        "snapshot": "Use any payload from scenarios above",
+        "quick_check_result": "Optional: Include QuickCheck result for context"
+      }
+    },
+    "save_and_analyze": {
+      "method": "POST",
+      "endpoint": "/api/save-snapshot",
+      "description": "Save snapshot + auto-escalate to analysis + trigger webhooks",
+      "body": "Use any payload from scenarios above",
+      "note": "This is the main endpoint - handles everything automatically"
+    },
+    "get_history": {
+      "method": "GET",
+      "endpoint": "/api/history?hospital_id=MED-CENTRAL-001&from=2025-10-01&to=2025-10-15",
+      "description": "Retrieve historical snapshots and analyses"
+    },
+    "shift_optimizer": {
+      "method": "POST",
+      "endpoint": "/api/agents/shift-optimizer",
+      "body": {
+        "hospital_id": "MED-CENTRAL-001",
+        "snapshot": "Use any high-risk payload"
+      }
+    },
+    "med_assist": {
+      "method": "POST",
+      "endpoint": "/api/agents/med-assist",
+      "body": {
+        "symptoms": "chest pain, diaphoresis, shortness of breath",
+        "vitals": {
+          "bp_systolic": 85,
+          "heart_rate": 125,
+          "respiratory_rate": 26,
+          "spo2": 89,
+          "temperature": 37.2
+        }
+      }
+    },
+    "transfer_advisor": {
+      "method": "POST",
+      "endpoint": "/api/agents/transfer-advisor",
+      "body": {
+        "hospital_id": "MED-CENTRAL-001",
+        "required_beds": 15,
+        "specialty": "ICU"
+      }
+    },
+    "wellness_check_prompt": {
+      "method": "POST",
+      "endpoint": "/api/agents/wellness-check",
+      "body": {
+        "action": "prompt"
+      }
+    },
+    "wellness_check_log": {
+      "method": "POST",
+      "endpoint": "/api/agents/wellness-check",
+      "body": {
+        "action": "log",
+        "user_id": "staff_001",
+        "mood_score": 6,
+        "note": "Long shift but managing well"
+      }
+    },
+    "generate_report": {
+      "method": "POST",
+      "endpoint": "/api/agents/report-builder",
+      "body": {
+        "hospital_id": "MED-CENTRAL-001",
+        "report_type": "summary"
+      }
+    }
+  }
+}
