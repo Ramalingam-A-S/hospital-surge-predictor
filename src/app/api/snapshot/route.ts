@@ -1,7 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/db';
-import { hospitalSnapshots, aiAnalyses } from '@/db/schema';
+import { hospitalSnapshots, aiAnalyses, hospitals } from '@/db/schema';
+import { eq } from 'drizzle-orm';
 import { getCurrentUser } from '@/lib/auth';
+
+interface SnapshotInput {
+  hospital_id: string;
+  timestamp?: string;
+  beds_total: number;
+  beds_free: number;
+  doctors_on_shift: number;
+  nurses_on_shift: number;
+  oxygen_cylinders: number;
+  ventilators: number;
+  medicines?: any;
+  incoming_emergencies: number;
+  aqi?: number;
+  festival?: string;
+  news_summary?: string;
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,291 +31,260 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Parse request body
-    const body = await request.json();
+    const snapshotData = await request.json();
 
-    // Extract and validate required fields
-    const {
-      hospital_id,
-      beds_total,
-      beds_free,
-      doctors_on_shift,
-      nurses_on_shift,
-      oxygen_cylinders,
-      ventilators,
-      medicines,
-      incoming_emergencies,
-      aqi,
-      festival,
-      news_summary,
-    } = body;
-
-    // Validation: Required fields
-    if (!hospital_id || typeof hospital_id !== 'string') {
+    // Validate required fields
+    if (!snapshotData.hospital_id || snapshotData.beds_total === undefined || snapshotData.beds_free === undefined ||
+        snapshotData.doctors_on_shift === undefined || snapshotData.nurses_on_shift === undefined ||
+        snapshotData.oxygen_cylinders === undefined || snapshotData.ventilators === undefined ||
+        snapshotData.incoming_emergencies === undefined) {
       return NextResponse.json(
-        { error: 'hospital_id is required and must be a string', code: 'MISSING_HOSPITAL_ID' },
+        { error: 'Missing required fields', code: 'MISSING_REQUIRED_FIELDS' },
         { status: 400 }
       );
     }
 
-    if (beds_total === undefined || beds_total === null || typeof beds_total !== 'number') {
+    // Validate data ranges
+    if (snapshotData.beds_total < 0 || snapshotData.beds_free < 0 || 
+        snapshotData.beds_free > snapshotData.beds_total) {
       return NextResponse.json(
-        { error: 'beds_total is required and must be a number', code: 'MISSING_BEDS_TOTAL' },
+        { error: 'Invalid bed count values', code: 'INVALID_BED_COUNT' },
         { status: 400 }
       );
     }
 
-    if (beds_free === undefined || beds_free === null || typeof beds_free !== 'number') {
+    // Check if hospital exists
+    const hospital = await db.select()
+      .from(hospitals)
+      .where(eq(hospitals.hospitalId, snapshotData.hospital_id))
+      .limit(1);
+
+    if (hospital.length === 0) {
       return NextResponse.json(
-        { error: 'beds_free is required and must be a number', code: 'MISSING_BEDS_FREE' },
-        { status: 400 }
+        { error: 'Hospital not found', code: 'HOSPITAL_NOT_FOUND' },
+        { status: 404 }
       );
     }
 
-    if (doctors_on_shift === undefined || doctors_on_shift === null || typeof doctors_on_shift !== 'number') {
+    // Step 1: Save snapshot to database
+    let newSnapshot;
+    try {
+      const snapshotTimestamp = snapshotData.timestamp || new Date().toISOString();
+      newSnapshot = await db.insert(hospitalSnapshots)
+        .values({
+          hospitalId: snapshotData.hospital_id,
+          timestamp: snapshotTimestamp,
+          bedsTotal: snapshotData.beds_total,
+          bedsFree: snapshotData.beds_free,
+          doctorsOnShift: snapshotData.doctors_on_shift,
+          nursesOnShift: snapshotData.nurses_on_shift,
+          oxygenCylinders: snapshotData.oxygen_cylinders,
+          ventilators: snapshotData.ventilators,
+          medicines: snapshotData.medicines || null,
+          incomingEmergencies: snapshotData.incoming_emergencies,
+          aqi: snapshotData.aqi || null,
+          festival: snapshotData.festival || null,
+          newsSummary: snapshotData.news_summary || null,
+        })
+        .returning();
+
+      if (!newSnapshot || newSnapshot.length === 0) {
+        throw new Error('Snapshot insert returned no data');
+      }
+    } catch (dbError) {
+      console.error('Database snapshot insert error:', dbError);
       return NextResponse.json(
-        { error: 'doctors_on_shift is required and must be a number', code: 'MISSING_DOCTORS_ON_SHIFT' },
-        { status: 400 }
-      );
-    }
-
-    if (nurses_on_shift === undefined || nurses_on_shift === null || typeof nurses_on_shift !== 'number') {
-      return NextResponse.json(
-        { error: 'nurses_on_shift is required and must be a number', code: 'MISSING_NURSES_ON_SHIFT' },
-        { status: 400 }
-      );
-    }
-
-    if (oxygen_cylinders === undefined || oxygen_cylinders === null || typeof oxygen_cylinders !== 'number') {
-      return NextResponse.json(
-        { error: 'oxygen_cylinders is required and must be a number', code: 'MISSING_OXYGEN_CYLINDERS' },
-        { status: 400 }
-      );
-    }
-
-    if (ventilators === undefined || ventilators === null || typeof ventilators !== 'number') {
-      return NextResponse.json(
-        { error: 'ventilators is required and must be a number', code: 'MISSING_VENTILATORS' },
-        { status: 400 }
-      );
-    }
-
-    if (!medicines || typeof medicines !== 'object') {
-      return NextResponse.json(
-        { error: 'medicines is required and must be an object', code: 'MISSING_MEDICINES' },
-        { status: 400 }
-      );
-    }
-
-    if (incoming_emergencies === undefined || incoming_emergencies === null || typeof incoming_emergencies !== 'number') {
-      return NextResponse.json(
-        { error: 'incoming_emergencies is required and must be a number', code: 'MISSING_INCOMING_EMERGENCIES' },
-        { status: 400 }
-      );
-    }
-
-    // Business logic validations
-    if (beds_total < 0 || beds_free < 0 || beds_free > beds_total) {
-      return NextResponse.json(
-        { error: 'Invalid bed counts: beds_free must be between 0 and beds_total', code: 'INVALID_BED_COUNTS' },
-        { status: 400 }
-      );
-    }
-
-    // Create hospital snapshot
-    const timestamp = new Date().toISOString();
-    const snapshotData = {
-      hospitalId: hospital_id.trim(),
-      timestamp,
-      bedsTotal: beds_total,
-      bedsFree: beds_free,
-      doctorsOnShift: doctors_on_shift,
-      nursesOnShift: nurses_on_shift,
-      oxygenCylinders: oxygen_cylinders,
-      ventilators,
-      medicines: JSON.stringify(medicines),
-      incomingEmergencies: incoming_emergencies,
-      aqi: aqi !== undefined && aqi !== null ? aqi : null,
-      festival: festival?.trim() || null,
-      newsSummary: news_summary?.trim() || null,
-    };
-
-    const [newSnapshot] = await db.insert(hospitalSnapshots)
-      .values(snapshotData)
-      .returning();
-
-    if (!newSnapshot) {
-      return NextResponse.json(
-        { error: 'Failed to create hospital snapshot', code: 'SNAPSHOT_CREATION_FAILED' },
+        { 
+          error: 'Failed to create snapshot in database',
+          code: 'SNAPSHOT_CREATE_FAILED',
+          details: String(dbError)
+        },
         { status: 500 }
       );
     }
 
-    // Calculate capacity ratio
-    const capacityRatio = beds_total > 0 ? (beds_total - beds_free) / beds_total : 0;
+    // Get auth token for internal API calls
+    const authHeader = request.headers.get('authorization');
+    const headers: HeadersInit = { 
+      'Content-Type': 'application/json'
+    };
+    if (authHeader) {
+      headers['Authorization'] = authHeader;
+    }
 
-    // Determine risk level
-    let riskLevel: string;
-    let predictedPatients: number;
-    let recommendedActions: Array<{ action: string; priority: string; reason: string }>;
-    let alertMessage: string;
-    let reasoningSummary: string;
+    // Step 2: Run QuickCheck analysis with auth
+    let quickCheckResult;
+    try {
+      const quickCheckResponse = await fetch(`${request.nextUrl.origin}/api/quick_check`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(snapshotData)
+      });
 
-    if (capacityRatio >= 0.85) {
-      riskLevel = 'High';
-      predictedPatients = Math.floor(Math.random() * 21) + 40; // 40-60
-      alertMessage = 'CRITICAL: Hospital capacity at dangerous levels. Immediate action required.';
-      recommendedActions = [
-        {
-          action: 'Activate emergency overflow protocols',
-          priority: 'Critical',
-          reason: 'Hospital is at 85%+ capacity and may reach full capacity within hours',
+      if (!quickCheckResponse.ok) {
+        const errorText = await quickCheckResponse.text();
+        console.error('QuickCheck API error:', errorText);
+        throw new Error(`QuickCheck failed with status ${quickCheckResponse.status}: ${errorText}`);
+      }
+
+      quickCheckResult = await quickCheckResponse.json();
+    } catch (qcError) {
+      console.error('QuickCheck error:', qcError);
+      return NextResponse.json(
+        { 
+          error: 'QuickCheck analysis failed',
+          code: 'QUICKCHECK_FAILED',
+          details: String(qcError)
         },
-        {
-          action: 'Contact nearby hospitals for patient transfers',
-          priority: 'High',
-          reason: 'Need to distribute patient load to prevent overcrowding',
-        },
-        {
-          action: 'Recall off-duty medical staff',
-          priority: 'High',
-          reason: 'Additional staff needed to handle increased patient volume',
-        },
-        {
-          action: 'Postpone non-emergency procedures',
-          priority: 'Medium',
-          reason: 'Free up resources and beds for emergency cases',
-        },
-      ];
-      reasoningSummary = `Critical capacity situation detected with ${(capacityRatio * 100).toFixed(1)}% bed occupancy. With ${incoming_emergencies} incoming emergencies and current resource levels (${doctors_on_shift} doctors, ${nurses_on_shift} nurses), the hospital is at high risk of overcrowding. Predicted additional patients in next 6 hours: ${predictedPatients}.`;
-    } else if (capacityRatio >= 0.70) {
-      riskLevel = 'Medium';
-      predictedPatients = Math.floor(Math.random() * 16) + 20; // 20-35
-      alertMessage = 'WARNING: Hospital capacity approaching high levels. Prepare contingency plans.';
-      recommendedActions = [
-        {
-          action: 'Expedite discharge of stable patients',
-          priority: 'High',
-          reason: 'Free up beds before reaching critical capacity',
-        },
-        {
-          action: 'Prepare emergency overflow areas',
-          priority: 'Medium',
-          reason: 'Ensure backup capacity is ready if needed',
-        },
-        {
-          action: 'Monitor oxygen and ventilator supplies closely',
-          priority: 'Medium',
-          reason: `Current supplies: ${oxygen_cylinders} oxygen cylinders, ${ventilators} ventilators`,
-        },
-        {
-          action: 'Review staffing schedules for potential reinforcement',
-          priority: 'Low',
-          reason: 'Ensure adequate staff coverage for increasing patient load',
-        },
-      ];
-      reasoningSummary = `Moderate capacity pressure with ${(capacityRatio * 100).toFixed(1)}% bed occupancy. Current resources (${doctors_on_shift} doctors, ${nurses_on_shift} nurses, ${oxygen_cylinders} oxygen cylinders, ${ventilators} ventilators) are adequate but trending toward strain. With ${incoming_emergencies} incoming emergencies, proactive measures recommended. Predicted additional patients in next 6 hours: ${predictedPatients}.`;
+        { status: 500 }
+      );
+    }
+
+    // Step 3: Auto-escalate to AgenticAnalysis if Medium/High risk or trigger_score >= 3
+    let finalAnalysis = null;
+    
+    if (quickCheckResult.risk === 'Medium' || quickCheckResult.risk === 'High' || quickCheckResult.trigger_score >= 3) {
+      try {
+        const agenticResponse = await fetch(`${request.nextUrl.origin}/api/agentic_analysis`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            ...snapshotData,
+            quick_check_result: quickCheckResult
+          })
+        });
+
+        if (agenticResponse.ok) {
+          finalAnalysis = await agenticResponse.json();
+        } else {
+          console.error('AgenticAnalysis failed, using fallback');
+          // Fallback to QuickCheck if AgenticAnalysis fails
+          finalAnalysis = {
+            risk: quickCheckResult.risk,
+            predicted_additional_patients_6h: quickCheckResult.predicted_need_estimate,
+            recommended_actions: [{ 
+              step: 1, 
+              type: 'advisory', 
+              detail: quickCheckResult.recommended_quick_action, 
+              urgency: quickCheckResult.risk.toLowerCase() 
+            }],
+            alert_message: `${quickCheckResult.risk} risk detected. ${quickCheckResult.recommended_quick_action}`,
+            confidence: 0.75,
+            reasoning: 'Quick-check based analysis (Agentic AI unavailable)',
+            simulated_outcomes: null
+          };
+        }
+      } catch (agenticError) {
+        console.error('AgenticAnalysis error:', agenticError);
+        // Use fallback
+        finalAnalysis = {
+          risk: quickCheckResult.risk,
+          predicted_additional_patients_6h: quickCheckResult.predicted_need_estimate,
+          recommended_actions: [{ 
+            step: 1, 
+            type: 'advisory', 
+            detail: quickCheckResult.recommended_quick_action, 
+            urgency: quickCheckResult.risk.toLowerCase() 
+          }],
+          alert_message: `${quickCheckResult.risk} risk detected. ${quickCheckResult.recommended_quick_action}`,
+          confidence: 0.75,
+          reasoning: 'Quick-check based analysis (Agentic AI unavailable)',
+          simulated_outcomes: null
+        };
+      }
     } else {
-      riskLevel = 'Low';
-      predictedPatients = Math.floor(Math.random() * 11) + 5; // 5-15
-      alertMessage = 'STABLE: Hospital capacity within normal operating parameters.';
-      recommendedActions = [
-        {
-          action: 'Continue standard operating procedures',
-          priority: 'Low',
-          reason: 'Hospital capacity is well within normal range',
-        },
-        {
-          action: 'Maintain routine equipment checks',
-          priority: 'Low',
-          reason: 'Ensure all medical equipment remains operational',
-        },
-        {
-          action: 'Monitor incoming emergency trends',
-          priority: 'Low',
-          reason: `Current incoming emergencies: ${incoming_emergencies}`,
-        },
-      ];
-      reasoningSummary = `Hospital operating at comfortable capacity with ${(capacityRatio * 100).toFixed(1)}% bed occupancy. Resources are well-distributed with ${doctors_on_shift} doctors, ${nurses_on_shift} nurses, ${oxygen_cylinders} oxygen cylinders, and ${ventilators} ventilators available. With ${incoming_emergencies} incoming emergencies, the facility can handle normal patient flow. Predicted additional patients in next 6 hours: ${predictedPatients}.`;
+      // Low risk - use QuickCheck results
+      finalAnalysis = {
+        risk: quickCheckResult.risk,
+        predicted_additional_patients_6h: quickCheckResult.predicted_need_estimate,
+        recommended_actions: [{ 
+          step: 1, 
+          type: 'advisory', 
+          detail: quickCheckResult.recommended_quick_action, 
+          urgency: 'low' 
+        }],
+        alert_message: 'Hospital operations within normal parameters',
+        confidence: 0.80,
+        reasoning: 'Quick-check analysis - low risk scenario',
+        simulated_outcomes: null
+      };
     }
 
-    // Add contextual factors to reasoning
-    if (festival) {
-      reasoningSummary += ` FESTIVAL ALERT: ${festival} - expect increased patient volume.`;
-      predictedPatients = Math.floor(predictedPatients * 1.3); // 30% increase during festivals
-    }
+    // Step 4: Store AI analysis in database
+    let analysisRecord;
+    try {
+      analysisRecord = await db.insert(aiAnalyses).values({
+        snapshotId: newSnapshot[0].id,
+        risk: finalAnalysis.risk,
+        predictedAdditionalPatients6h: finalAnalysis.predicted_additional_patients_6h,
+        recommendedActions: finalAnalysis.recommended_actions,
+        alertMessage: finalAnalysis.alert_message,
+        confidenceScore: finalAnalysis.confidence,
+        reasoning: finalAnalysis.reasoning || null,
+        simulatedOutcomes: finalAnalysis.simulated_outcomes || null,
+      }).returning();
 
-    if (aqi !== undefined && aqi !== null && aqi > 200) {
-      reasoningSummary += ` AIR QUALITY WARNING: AQI of ${aqi} may lead to respiratory emergencies.`;
-      predictedPatients = Math.floor(predictedPatients * 1.2); // 20% increase for poor air quality
-    }
-
-    if (news_summary) {
-      reasoningSummary += ` NEWS CONTEXT: ${news_summary}`;
-    }
-
-    // Generate confidence score (0.85-0.95)
-    const confidenceScore = 0.85 + Math.random() * 0.10;
-
-    // Create AI analysis record
-    const analysisData = {
-      snapshotId: newSnapshot.id,
-      risk: riskLevel,
-      predictedAdditionalPatients6h: predictedPatients,
-      recommendedActions: JSON.stringify(recommendedActions),
-      alertMessage,
-      confidenceScore: Math.round(confidenceScore * 100) / 100,
-      capacityRatio: Math.round(capacityRatio * 1000) / 1000,
-      reasoningSummary,
-    };
-
-    const [newAnalysis] = await db.insert(aiAnalyses)
-      .values(analysisData)
-      .returning();
-
-    if (!newAnalysis) {
+      if (!analysisRecord || analysisRecord.length === 0) {
+        throw new Error('Analysis insert returned no data');
+      }
+    } catch (analysisDbError) {
+      console.error('Database analysis insert error:', analysisDbError);
       return NextResponse.json(
-        { error: 'Failed to create AI analysis', code: 'ANALYSIS_CREATION_FAILED' },
+        { 
+          error: 'Failed to save analysis results to database',
+          code: 'ANALYSIS_INSERT_FAILED',
+          details: String(analysisDbError)
+        },
         { status: 500 }
       );
     }
 
-    // Return complete response
-    return NextResponse.json(
-      {
-        snapshot_id: newSnapshot.id,
-        analysis_id: newAnalysis.id,
-        hospital_id: newSnapshot.hospitalId,
-        timestamp: newSnapshot.timestamp,
-        capacity_ratio: newAnalysis.capacityRatio,
-        risk: newAnalysis.risk,
-        alert_message: newAnalysis.alertMessage,
-        predicted_additional_patients_6h: newAnalysis.predictedAdditionalPatients6h,
-        recommended_actions: JSON.parse(newAnalysis.recommendedActions as string),
-        confidence_score: newAnalysis.confidenceScore,
-        reasoning_summary: newAnalysis.reasoningSummary,
-        snapshot_data: {
-          beds_total: newSnapshot.bedsTotal,
-          beds_free: newSnapshot.bedsFree,
-          doctors_on_shift: newSnapshot.doctorsOnShift,
-          nurses_on_shift: newSnapshot.nursesOnShift,
-          oxygen_cylinders: newSnapshot.oxygenCylinders,
-          ventilators: newSnapshot.ventilators,
-          medicines: JSON.parse(newSnapshot.medicines as string),
-          incoming_emergencies: newSnapshot.incomingEmergencies,
-          aqi: newSnapshot.aqi,
-          festival: newSnapshot.festival,
-          news_summary: newSnapshot.newsSummary,
-        },
-      },
-      { status: 201 }
-    );
+    // Step 5: Trigger webhook notifications for High risk
+    if (finalAnalysis.risk === 'High') {
+      try {
+        await fetch(`${request.nextUrl.origin}/api/webhooks/notify`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            hospital_id: snapshotData.hospital_id,
+            risk: finalAnalysis.risk,
+            predicted_additional_patients_6h: finalAnalysis.predicted_additional_patients_6h,
+            recommended_actions: finalAnalysis.recommended_actions,
+            alert_message: finalAnalysis.alert_message,
+            confidence: finalAnalysis.confidence,
+            channels: ['slack', 'twilio', 'email']
+          })
+        });
+      } catch (webhookError) {
+        console.error('Webhook notification failed:', webhookError);
+        // Don't fail the request if webhook fails
+      }
+    }
+
+    return NextResponse.json({
+      success: true,
+      snapshot_id: newSnapshot[0].id,
+      analysis_id: analysisRecord[0].id,
+      hospital_id: snapshotData.hospital_id,
+      risk: finalAnalysis.risk,
+      predicted_additional_patients_6h: finalAnalysis.predicted_additional_patients_6h,
+      recommended_actions: finalAnalysis.recommended_actions,
+      alert_message: finalAnalysis.alert_message,
+      confidence: finalAnalysis.confidence,
+      reasoning: finalAnalysis.reasoning,
+      simulated_outcomes: finalAnalysis.simulated_outcomes,
+      quick_check: quickCheckResult,
+      escalated: quickCheckResult.risk !== 'Low',
+      webhook_triggered: finalAnalysis.risk === 'High'
+    });
+
   } catch (error) {
-    console.error('POST /api/snapshot error:', error);
+    console.error('Snapshot save error:', error);
     return NextResponse.json(
       { 
-        error: 'Internal server error: ' + (error instanceof Error ? error.message : 'Unknown error'),
-        code: 'INTERNAL_SERVER_ERROR'
+        error: 'Failed to save snapshot and analyze',
+        code: 'SNAPSHOT_PROCESSING_ERROR',
+        details: String(error)
       },
       { status: 500 }
     );
