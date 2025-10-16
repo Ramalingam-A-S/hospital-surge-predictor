@@ -1,16 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getCurrentUser } from '@/lib/auth';
-
-interface QuickCheckInput {
-  hospital_id: string;
-  beds_total: number;
-  beds_free: number;
-  oxygen_cylinders: number;
-  incoming_emergencies: number;
-  aqi?: number;
-  festival?: string;
-  news_summary?: string;
-}
 
 interface QuickCheckResult {
   risk: 'Low' | 'Medium' | 'High';
@@ -18,38 +6,39 @@ interface QuickCheckResult {
   predicted_need_estimate: number;
   trigger_score: number;
   recommended_quick_action: string;
+  hospital_id: string;
+  beds_total: number;
+  beds_free: number;
+  oxygen_cylinders: number;
+  incoming_emergencies: number;
+  aqi: number;
+  festival: string;
+  news_summary: string;
 }
+
+const randomInt = (min: number, max: number) =>
+  Math.floor(Math.random() * (max - min + 1)) + min;
+
+const randomChoice = <T>(arr: T[]): T =>
+  arr[Math.floor(Math.random() * arr.length)];
 
 export async function POST(request: NextRequest) {
   try {
-    const user = await getCurrentUser(request);
-    if (!user) {
-      return NextResponse.json(
-        { error: 'Authentication required', code: 'UNAUTHORIZED' },
-        { status: 401 }
-      );
-    }
-
-    const body: QuickCheckInput = await request.json();
-    const {
-      hospital_id,
-      beds_total,
-      beds_free,
-      oxygen_cylinders,
-      incoming_emergencies,
-      aqi = 0,
-      festival = '',
-      news_summary = '',
-    } = body;
-
-    // Validation
-    if (!hospital_id || beds_total === undefined || beds_free === undefined || 
-        oxygen_cylinders === undefined || incoming_emergencies === undefined) {
-      return NextResponse.json(
-        { error: 'Missing required fields', code: 'MISSING_FIELDS' },
-        { status: 400 }
-      );
-    }
+    // Generate random hospital scenario
+    const hospital_id = `HOSP-${randomInt(100, 999)}`;
+    const beds_total = randomInt(50, 200);
+    const beds_free = randomInt(0, beds_total);
+    const oxygen_cylinders = randomInt(5, 100);
+    const incoming_emergencies = randomInt(0, 10);
+    const aqi = randomInt(50, 300);
+    const festival = randomChoice(['None', 'Diwali', 'Christmas', 'Eid', 'Holi']);
+    const news_summary = randomChoice([
+      'Routine day',
+      'Minor accident nearby',
+      'Mass casualty reported',
+      'Bridge collapse',
+      'Community health camp ongoing'
+    ]);
 
     // Calculate capacity_ratio
     const capacity_ratio = (beds_free / Math.max(1, beds_total)) * 100;
@@ -63,15 +52,12 @@ export async function POST(request: NextRequest) {
     // Calculate trigger_score
     let trigger_score = 0;
     if (aqi >= 200) trigger_score += 2;
-    if (festival && festival.trim() !== '') trigger_score += 1;
-    
+    if (festival && festival !== 'None') trigger_score += 1;
+
     const newsLower = news_summary.toLowerCase();
-    if (newsLower.includes('accident') || 
-        newsLower.includes('mass casualty') || 
-        newsLower.includes('collapse')) {
+    if (newsLower.includes('accident') || newsLower.includes('mass casualty') || newsLower.includes('collapse')) {
       trigger_score += 3;
     }
-    
     if (incoming_emergencies >= 5) trigger_score += 1;
 
     // Determine risk level
@@ -84,7 +70,7 @@ export async function POST(request: NextRequest) {
       trigger_score >= 3
     ) {
       risk = 'High';
-      recommended_quick_action = 
+      recommended_quick_action =
         'URGENT: Activate emergency protocols. Contact nearby hospitals for patient transfer. ' +
         'Request additional staff and supplies immediately. Prepare for potential surge.';
     } else if (
@@ -92,12 +78,12 @@ export async function POST(request: NextRequest) {
       oxygen_cylinders < predicted_need_estimate
     ) {
       risk = 'Medium';
-      recommended_quick_action = 
+      recommended_quick_action =
         'CAUTION: Monitor situation closely. Ensure staff are on standby. ' +
         'Review supply inventory and prepare contingency plans.';
     } else {
       risk = 'Low';
-      recommended_quick_action = 
+      recommended_quick_action =
         'Normal operations. Continue routine monitoring of capacity and resources.';
     }
 
@@ -107,14 +93,25 @@ export async function POST(request: NextRequest) {
       predicted_need_estimate,
       trigger_score,
       recommended_quick_action,
+      hospital_id,
+      beds_total,
+      beds_free,
+      oxygen_cylinders,
+      incoming_emergencies,
+      aqi,
+      festival,
+      news_summary
     };
 
     return NextResponse.json(result, { status: 200 });
   } catch (error) {
-    console.error('QuickCheck error:', error);
+    console.error('QuickCheck demo error:', error);
     return NextResponse.json(
-      { error: 'Internal server error: ' + error },
-      { status: 500 }
+      {
+        error: 'Demo mode active — AI analysis unavailable',
+        code: 'DEMO_MODE',
+      },
+      { status: 200 }
     );
   }
 }
