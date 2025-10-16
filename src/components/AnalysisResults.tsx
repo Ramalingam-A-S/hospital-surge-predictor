@@ -92,13 +92,6 @@ export default function AnalysisResults({ result }: AnalysisResultsProps) {
 
   const handleSendAlert = async () => {
     // Simulate sending emergency alert
-    console.log("🚨 EMERGENCY ALERT SENT:", {
-      hospital_id: result.hospital_id || result.snapshot_id,
-      risk: risk,
-      timestamp: new Date().toISOString(),
-      alert_message: alertMessage,
-      actions: recommendedActions
-    });
     setAlertSent(true);
     toast.success("Emergency alert sent to hospital network!");
   };

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { db } from '@/db';
-import { hospitalSnapshots, aiAnalyses } from '@/db/schema';
+import { hospitalSnapshots } from '@/db/schema';
 import { eq, desc } from 'drizzle-orm';
 
 interface AgenticAnalysisInput {
@@ -54,11 +54,11 @@ export async function POST(request: NextRequest) {
       hospital_id,
       beds_total,
       beds_free,
-      doctors_on_shift,
-      nurses_on_shift,
-      oxygen_cylinders,
-      ventilators,
-      incoming_emergencies,
+      doctors_on_shift = 0,
+      nurses_on_shift = 0,
+      oxygen_cylinders = 0,
+      ventilators = 0,
+      incoming_emergencies = 0,
       aqi = 0,
       festival = '',
       news_summary = '',
@@ -72,9 +72,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Fetch recent history for this hospital (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Fetch recent history for this hospital (last 10 snapshots)
     const recentHistory = await db
       .select()
       .from(hospitalSnapshots)
@@ -92,7 +90,7 @@ export async function POST(request: NextRequest) {
       try {
         result = await callExternalLLM(body, recentHistory);
       } catch (error) {
-        console.log('LLM call failed, using fallback logic:', error);
+        // LLM call failed, using fallback logic
         result = fallbackAnalysis(body);
       }
     } else {
@@ -104,7 +102,10 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('AgenticAnalysis error:', error);
     return NextResponse.json(
-      { error: 'Internal server error: ' + error },
+      { 
+        error: 'AgenticAnalysis processing failed',
+        code: 'AGENTIC_ANALYSIS_ERROR'
+      },
       { status: 500 }
     );
   }
@@ -115,11 +116,11 @@ function fallbackAnalysis(input: AgenticAnalysisInput): AgenticAnalysisResult {
   const {
     beds_total,
     beds_free,
-    doctors_on_shift,
-    nurses_on_shift,
-    oxygen_cylinders,
-    ventilators,
-    incoming_emergencies,
+    doctors_on_shift = 0,
+    nurses_on_shift = 0,
+    oxygen_cylinders = 0,
+    ventilators = 0,
+    incoming_emergencies = 0,
     aqi = 0,
     festival = '',
     news_summary = '',
