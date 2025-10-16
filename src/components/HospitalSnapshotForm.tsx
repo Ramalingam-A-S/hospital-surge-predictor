@@ -113,8 +113,10 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="hospital_id">Hospital ID</Label>
                   <Input
                     id="hospital_id"
+                    name="hospital_id"
                     value={formData.hospital_id}
                     onChange={(e) => handleInputChange("hospital_id", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -122,9 +124,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="beds_total">Total Beds</Label>
                   <Input
                     id="beds_total"
+                    name="beds_total"
                     type="number"
                     value={formData.beds_total}
                     onChange={(e) => handleInputChange("beds_total", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -132,9 +136,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="beds_free">Free Beds</Label>
                   <Input
                     id="beds_free"
+                    name="beds_free"
                     type="number"
                     value={formData.beds_free}
                     onChange={(e) => handleInputChange("beds_free", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -142,9 +148,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="incoming_emergencies">Incoming Emergencies</Label>
                   <Input
                     id="incoming_emergencies"
+                    name="incoming_emergencies"
                     type="number"
                     value={formData.incoming_emergencies}
                     onChange={(e) => handleInputChange("incoming_emergencies", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -157,9 +165,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="doctors_on_shift">Doctors on Shift</Label>
                   <Input
                     id="doctors_on_shift"
+                    name="doctors_on_shift"
                     type="number"
                     value={formData.doctors_on_shift}
                     onChange={(e) => handleInputChange("doctors_on_shift", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -167,9 +177,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="nurses_on_shift">Nurses on Shift</Label>
                   <Input
                     id="nurses_on_shift"
+                    name="nurses_on_shift"
                     type="number"
                     value={formData.nurses_on_shift}
                     onChange={(e) => handleInputChange("nurses_on_shift", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -177,9 +189,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="oxygen_cylinders">Oxygen Cylinders</Label>
                   <Input
                     id="oxygen_cylinders"
+                    name="oxygen_cylinders"
                     type="number"
                     value={formData.oxygen_cylinders}
                     onChange={(e) => handleInputChange("oxygen_cylinders", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -187,9 +201,11 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                   <Label htmlFor="ventilators">Ventilators</Label>
                   <Input
                     id="ventilators"
+                    name="ventilators"
                     type="number"
                     value={formData.ventilators}
                     onChange={(e) => handleInputChange("ventilators", e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -199,10 +215,12 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                 <Label htmlFor="medicines">Medicines (JSON format)</Label>
                 <Textarea
                   id="medicines"
+                  name="medicines"
                   value={formData.medicines}
                   onChange={(e) => handleInputChange("medicines", e.target.value)}
                   rows={6}
                   className="font-mono text-sm"
+                  autoComplete="off"
                 />
               </div>
             </TabsContent>
@@ -212,29 +230,35 @@ export default function HospitalSnapshotForm({ onAnalysisComplete }: HospitalSna
                 <Label htmlFor="aqi">Air Quality Index (AQI)</Label>
                 <Input
                   id="aqi"
+                  name="aqi"
                   type="number"
                   placeholder="e.g., 150"
                   value={formData.aqi}
                   onChange={(e) => handleInputChange("aqi", e.target.value)}
+                  autoComplete="off"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="festival">Festival/Event Name</Label>
                 <Input
                   id="festival"
+                  name="festival"
                   placeholder="e.g., Diwali, New Year"
                   value={formData.festival}
                   onChange={(e) => handleInputChange("festival", e.target.value)}
+                  autoComplete="off"
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="news_summary">Major News Summary</Label>
                 <Textarea
                   id="news_summary"
+                  name="news_summary"
                   placeholder="Describe any major events or news affecting the region..."
                   value={formData.news_summary}
                   onChange={(e) => handleInputChange("news_summary", e.target.value)}
                   rows={4}
+                  autoComplete="off"
                 />
               </div>
             </TabsContent>
