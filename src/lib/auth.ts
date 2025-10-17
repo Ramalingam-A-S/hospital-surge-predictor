@@ -12,6 +12,8 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
   },
+  secret: process.env.BETTER_AUTH_SECRET!,
+  baseURL: process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000",
 });
 
 export async function getCurrentUser(request: NextRequest) {
