@@ -1,27 +1,34 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { bearer } from "better-auth/plugins";
-import { NextRequest } from 'next/server';
 import { db } from "@/db";
- 
+import { NextRequest } from "next/server";
+import * as schema from "@/db/schema";
+
 export const auth = betterAuth({
-	database: drizzleAdapter(db, {
-		provider: "sqlite",
-	}),
-	emailAndPassword: {    
-		enabled: true
-	},
-	plugins: [bearer()]
+  database: drizzleAdapter(db, {
+    provider: "sqlite",
+    schema,
+  }),
+  emailAndPassword: {
+    enabled: true,
+  },
 });
 
-// Session validation helper
 export async function getCurrentUser(request: NextRequest) {
-  // Convert NextRequest headers to a plain object
-  const headersList: Record<string, string> = {};
-  request.headers.forEach((value, key) => {
-    headersList[key] = value;
-  });
+  try {
+    // Convert Headers object to plain object for better-auth
+    const headersObj: Record<string, string> = {};
+    request.headers.forEach((value, key) => {
+      headersObj[key] = value;
+    });
 
-  const session = await auth.api.getSession({ headers: headersList });
-  return session?.user || null;
+    const session = await auth.api.getSession({ 
+      headers: headersObj 
+    });
+    
+    return session?.user || null;
+  } catch (error) {
+    console.error('getCurrentUser error:', error);
+    return null;
+  }
 }
