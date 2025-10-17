@@ -89,10 +89,10 @@ export default function LoginPage() {
             <div className="text-center text-sm text-muted-foreground space-y-2">
               <p>Demo credentials:</p>
               <p className="font-mono text-xs">
-                Admin: admin@medcentric.ai / admin123
+                Admin: admin@medcentric.ai / admin123456
               </p>
               <p className="font-mono text-xs">
-                Staff: sarah@medcentric.ai / staff123
+                Staff: sarah@medcentric.ai / staff123456
               </p>
             </div>
             <div className="text-center">
